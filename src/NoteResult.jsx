@@ -24,7 +24,7 @@ export default function NoteResult({ message, onAgain, againLabel }) {
       <button
         onClick={onAgain}
         style={{ background: TOKENS.gold, color: TOKENS.bgDeep }}
-        className="w-full h-11 rounded-full flex items-center justify-center gap-2 text-sm font-bold cursor-pointer"
+        className="cf-nudge w-full h-11 rounded-full flex items-center justify-center gap-2 text-sm font-bold cursor-pointer"
       >
         <RefreshCw size={15} /> {againLabel}
       </button>

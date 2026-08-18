@@ -18,6 +18,7 @@ export const MESSAGES = [
   { cat: "Today", text: "Hoping today treats you as well as you deserve, Ganira." },
   { cat: "A Little Theory", text: "I have a theory that the best mornings start with someone worth texting first. You're proof." },
   { cat: "Random Thought", text: "Turns out goofy girls are underrated. Someone should really write a paper on this." },
+  { cat: "Before You Start", text: "Work's about to start — hoping today goes smoothly and turns out to be a really good one for you, Ganira." },
 ];
 
 export const SUN_MESSAGES = [

@@ -1,12 +1,13 @@
 import React, { useState } from "react";
-import { SUN_MESSAGES, TOKENS, pickMessage } from "./messages.js";
+import { SUN_MESSAGES, TOKENS } from "./messages.js";
 import NoteResult from "./NoteResult.jsx";
 
 const STEPS = 5;
 
 export default function SunGame() {
   const [fill, setFill] = useState(0);
-  const [message, setMessage] = useState(() => pickMessage(null, SUN_MESSAGES));
+  const [index, setIndex] = useState(0);
+  const message = SUN_MESSAGES[index];
 
   const done = fill >= STEPS;
   const pct = fill / STEPS;
@@ -17,7 +18,7 @@ export default function SunGame() {
   };
 
   const again = () => {
-    setMessage((m) => pickMessage(m, SUN_MESSAGES));
+    setIndex((i) => (i + 1) % SUN_MESSAGES.length);
     setFill(0);
   };
 

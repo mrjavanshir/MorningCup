@@ -51,8 +51,13 @@ export default function App() {
         .sn-sun-btn:active { transform: scale(0.97); }
         @keyframes sn-pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 0.9; } }
         .sn-rays { animation: sn-pulse 2.4s ease-in-out infinite; }
+        @keyframes cf-nudge {
+          0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(216,168,87,0); }
+          50% { transform: scale(1.035); box-shadow: 0 0 16px 2px rgba(216,168,87,0.55); }
+        }
+        .cf-nudge { animation: cf-nudge 1.8s ease-in-out 1.2s infinite; }
         @media (prefers-reduced-motion: reduce) {
-          .cf-steam, .cf-fade, .sn-rays { animation: none; }
+          .cf-steam, .cf-fade, .sn-rays, .cf-nudge { animation: none; }
         }
       `}</style>
 
