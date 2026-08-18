@@ -34,3 +34,13 @@ src/MorningCup.jsx  # oyunun bütün məntiqi və UI-ı
 
 Mesajları dəyişmək üçün `src/MorningCup.jsx` içindəki `MESSAGES` massivinə əlavə et.
 Fincanın neçə toxunuşa dolduğunu `STEPS` sabiti idarə edir.
+
+## Deploy
+
+`main`-ə hər push GitHub Actions ilə avtomatik GitHub Pages-ə deploy olunur
+([.github/workflows/deploy.yml](.github/workflows/deploy.yml)).
+
+Canlı: https://mrjavanshir.github.io/MorningCup/
+
+> `vite.config.js`-dəki `base: "/MorningCup/"` Pages-in alt-yol (subpath) URL-i üçündür.
+> Repo adı dəyişsə, onu da dəyişmək lazımdır.
