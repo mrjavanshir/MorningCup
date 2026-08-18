@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ArrowUpFromLine, BatteryCharging, Check, Link2, ListChecks, Scale, Stamp, Sun, Sunrise } from "lucide-react";
+import { ArrowUpFromLine, BatteryCharging, Bird, Check, Eraser, Link2, ListChecks, Moon, MousePointerClick, NotebookPen, Scale, Sparkles, Stamp, Sun, Sunrise, VenetianMask, Zap } from "lucide-react";
 import { TOKENS } from "./messages.js";
 import SunGame from "./SunGame.jsx";
 import DaybreakGame from "./DaybreakGame.jsx";
@@ -7,6 +7,13 @@ import AgreementGame from "./AgreementGame.jsx";
 import ThisOrThatGame from "./ThisOrThatGame.jsx";
 import RechargeGame from "./RechargeGame.jsx";
 import PlansGame from "./PlansGame.jsx";
+import OrigamiGame from "./OrigamiGame.jsx";
+import EnergizerGame from "./EnergizerGame.jsx";
+import ScratchGame from "./ScratchGame.jsx";
+import TruthsGame from "./TruthsGame.jsx";
+import ImpossibleGame from "./ImpossibleGame.jsx";
+import CloseDayGame from "./CloseDayGame.jsx";
+import ThreeThingsGame from "./ThreeThingsGame.jsx";
 
 const GAMES = [
   { id: "sun", icon: Sunrise, title: "Sunrise", desc: "Tap to raise it." },
@@ -15,6 +22,13 @@ const GAMES = [
   { id: "this-or-that", icon: Scale, title: "This or That", desc: "Pick a side, compare picks." },
   { id: "recharge", icon: BatteryCharging, title: "Recharge", desc: "Score your day, get a boost." },
   { id: "plans", icon: ListChecks, title: "Future Plans", desc: "List ideas, see what overlaps." },
+  { id: "origami", icon: Bird, title: "Origami", desc: "Fold a flower or a swan." },
+  { id: "energizer", icon: Zap, title: "Energizer", desc: "20 seconds, no equipment." },
+  { id: "scratch", icon: Sparkles, title: "Scratch Card", desc: "Scratch the gold, claim a prize." },
+  { id: "truths", icon: VenetianMask, title: "Two Truths & a Lie", desc: "Spot the one that isn't true." },
+  { id: "impossible", icon: MousePointerClick, title: "The Impossible Button", desc: "It does not want to be pressed." },
+  { id: "close-day", icon: Eraser, title: "Close the Day", desc: "Dump it out, watch it go.", night: true },
+  { id: "three-things", icon: NotebookPen, title: "Three Good Things", desc: "Log what went well today.", night: true },
 ];
 
 function parseRoute() {
@@ -31,8 +45,20 @@ function gameLink(id) {
   return `${window.location.origin}${import.meta.env.BASE_URL}games/${id}`;
 }
 
+// Opt-in via ?after=22 — the page refuses to open before that hour.
+// Hours before 4am still count as "night", so a 1am visit is not locked.
+function nightLockHour() {
+  const raw = new URLSearchParams(window.location.search).get("after");
+  if (!raw || !/^\d{1,2}$/.test(raw)) return null;
+  const h = Number(raw);
+  if (h > 23) return null;
+  const now = new Date().getHours();
+  return now >= 4 && now < h ? h : null;
+}
+
 export default function App() {
   const [route, setRoute] = useState(parseRoute);
+  const [lockHour] = useState(nightLockHour);
   const [copiedId, setCopiedId] = useState(null);
 
   const copyLink = async (id) => {
@@ -48,6 +74,10 @@ export default function App() {
   if (route.view === "blank") {
     return <div style={{ background: TOKENS.bgDeep, minHeight: "100vh" }} />;
   }
+
+  const activeGame = route.view === "game" ? GAMES.find((g) => g.id === route.id) : null;
+  const isNight = !!activeGame?.night;
+  const locked = route.view === "game" && lockHour !== null;
 
   return (
     <div
@@ -73,34 +103,68 @@ export default function App() {
         .rg-charge-fill { animation: rg-fill 1.2s ease-out forwards; }
         @keyframes rg-pulse { 0%, 100% { opacity: 0.6; transform: scale(1); } 50% { opacity: 1; transform: scale(1.15); } }
         .rg-charge-pulse { animation: rg-pulse 0.6s ease-in-out infinite; }
+        @keyframes og-pop { 0% { transform: scale(0.6); opacity: 0; } 60% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+        .og-crane-pop { animation: og-pop 0.4s cubic-bezier(.3,1.4,.5,1) forwards; }
+        @keyframes og-unfold { 0% { transform: scaleY(0.05) rotateX(70deg); opacity: 0; } 100% { transform: scaleY(1) rotateX(0deg); opacity: 1; } }
+        .og-unfold-in { animation: og-unfold 0.5s ease-out forwards; transform-origin: top center; }
+        @keyframes en-drain { from { stroke-dashoffset: 0; } to { stroke-dashoffset: 377; } }
+        .en-ring-drain { animation: en-drain 20s linear forwards; }
+        @keyframes en-pop { 0% { transform: scale(0.95); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        .en-pop { animation: en-pop 0.3s ease-out; }
         @media (prefers-reduced-motion: reduce) {
-          .cf-fade, .sn-rays, .cf-nudge, .db-star, .fs-stamp-in, .rg-charge-fill, .rg-charge-pulse { animation: none; }
+          .cf-fade, .sn-rays, .cf-nudge, .db-star, .fs-stamp-in, .rg-charge-fill, .rg-charge-pulse, .og-crane-pop, .og-unfold-in, .en-ring-drain, .en-pop { animation: none; }
         }
       `}</style>
 
       <div className="w-full max-w-sm flex flex-col items-center">
-        <Sun size={18} color={TOKENS.gold} className="mb-2" />
+        {isNight ? <Moon size={18} color={TOKENS.gold} className="mb-2" /> : <Sun size={18} color={TOKENS.gold} className="mb-2" />}
         <h1
           style={{ color: TOKENS.cream, fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: 26, textAlign: "center" }}
           className="mb-1"
         >
-          Good Morning, Ganira
+          {isNight ? "Good Night, Ganira" : "Good Morning, Ganira"}
         </h1>
         <p style={{ color: TOKENS.muted, fontSize: 13.5, textAlign: "center" }} className="mb-8">
-          a little morning surprise, just for you.
+          {isNight ? "something small before you sleep." : "a little morning surprise, just for you."}
         </p>
 
-        {route.view === "hub" ? (
+        {locked ? (
+          <div className="flex flex-col items-center" style={{ paddingTop: 12 }}>
+            <Moon size={34} color={TOKENS.gold} style={{ opacity: 0.7, marginBottom: 14 }} />
+            <p style={{ color: TOKENS.cream, fontFamily: "'Fraunces', serif", fontSize: 17, textAlign: "center" }} className="mb-2">
+              Not yet.
+            </p>
+            <p style={{ color: TOKENS.muted, fontSize: 12.5, textAlign: "center" }}>
+              This one opens after {String(lockHour).padStart(2, "0")}:00. Come back tonight.
+            </p>
+          </div>
+        ) : route.view === "hub" ? (
           <>
             <p style={{ color: TOKENS.muted, fontSize: 11.5, textAlign: "center" }} className="mb-4">
               Each game has its own link — whoever opens it only sees that one game.
             </p>
             <div className="w-full flex flex-col gap-3">
-              {GAMES.map((g) => {
+              {GAMES.map((g, i) => {
                 const Icon = g.icon;
+                const startsGroup = i === 0 || GAMES[i - 1].night !== g.night;
                 return (
+                  <React.Fragment key={g.id}>
+                    {startsGroup && (
+                      <span
+                        style={{
+                          color: TOKENS.muted,
+                          fontSize: 10,
+                          fontWeight: 700,
+                          letterSpacing: 1.6,
+                          textTransform: "uppercase",
+                          marginTop: i === 0 ? 0 : 10,
+                          marginBottom: -4,
+                        }}
+                      >
+                        {g.night ? "For the night" : "For the morning"}
+                      </span>
+                    )}
                   <div
-                    key={g.id}
                     style={{
                       background: `linear-gradient(160deg, ${TOKENS.bgCard}, ${TOKENS.bgCardEdge})`,
                       border: `1px solid ${TOKENS.line}`,
@@ -142,6 +206,7 @@ export default function App() {
                       {copiedId === g.id ? <Check size={15} color={TOKENS.gold} /> : <Link2 size={15} />}
                     </button>
                   </div>
+                  </React.Fragment>
                 );
               })}
             </div>
@@ -154,6 +219,13 @@ export default function App() {
             {route.id === "this-or-that" && <ThisOrThatGame />}
             {route.id === "recharge" && <RechargeGame />}
             {route.id === "plans" && <PlansGame />}
+            {route.id === "origami" && <OrigamiGame />}
+            {route.id === "energizer" && <EnergizerGame />}
+            {route.id === "scratch" && <ScratchGame />}
+            {route.id === "truths" && <TruthsGame />}
+            {route.id === "impossible" && <ImpossibleGame />}
+            {route.id === "close-day" && <CloseDayGame />}
+            {route.id === "three-things" && <ThreeThingsGame />}
           </>
         )}
       </div>
