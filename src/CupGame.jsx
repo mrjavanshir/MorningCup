@@ -33,7 +33,7 @@ export default function CupGame() {
   return (
     <div className="w-full flex flex-col items-center">
       <p style={{ color: TOKENS.muted, fontSize: 13.5, textAlign: "center" }} className="mb-8">
-        {done ? "Fincan hazırdır )" : "Fincanı doldurmaq üçün toxun"}
+        {done ? "Your cup is ready )" : "Tap to fill your cup"}
       </p>
 
       {/* Cup */}
@@ -81,7 +81,7 @@ export default function CupGame() {
         <button
           onClick={pour}
           disabled={done}
-          aria-label={done ? "Fincan doludur" : `Fincanı doldur, ${fill} / ${STEPS}`}
+          aria-label={done ? "Cup is full" : `Fill the cup, ${fill} of ${STEPS}`}
           className="cf-cup"
           style={{
             position: "absolute",
@@ -151,7 +151,7 @@ export default function CupGame() {
         </div>
       )}
 
-      {done && <NoteResult message={message} onAgain={again} againLabel="Bir fincan da" />}
+      {done && <NoteResult message={message} onAgain={again} againLabel="One more cup" />}
     </div>
   );
 }

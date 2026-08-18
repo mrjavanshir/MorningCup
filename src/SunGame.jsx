@@ -24,13 +24,13 @@ export default function SunGame() {
   return (
     <div className="w-full flex flex-col items-center">
       <p style={{ color: TOKENS.muted, fontSize: 13.5, textAlign: "center" }} className="mb-8">
-        {done ? "Günəş doğdu )" : "Günəşi qaldırmaq üçün toxun"}
+        {done ? "The sun is up )" : "Tap to raise the sun"}
       </p>
 
       <button
         onClick={rise}
         disabled={done}
-        aria-label={done ? "Günəş doğdu" : `Günəşi qaldır, ${fill} / ${STEPS}`}
+        aria-label={done ? "The sun is up" : `Raise the sun, ${fill} of ${STEPS}`}
         className="sn-sun-btn"
         style={{
           position: "relative",
@@ -86,7 +86,7 @@ export default function SunGame() {
         </div>
       )}
 
-      {done && <NoteResult message={message} onAgain={again} againLabel="Yenidən qaldır" />}
+      {done && <NoteResult message={message} onAgain={again} againLabel="Raise it again" />}
     </div>
   );
 }

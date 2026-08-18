@@ -5,8 +5,8 @@ import CupGame from "./CupGame.jsx";
 import SunGame from "./SunGame.jsx";
 
 const GAMES = [
-  { id: "cup", icon: Coffee, title: "Fincan", desc: "Toxunub fincanı doldur." },
-  { id: "sun", icon: Sunrise, title: "Günəş", desc: "Toxunub günəşi qaldır." },
+  { id: "cup", icon: Coffee, title: "The Cup", desc: "Tap to fill it up." },
+  { id: "sun", icon: Sunrise, title: "Sunrise", desc: "Tap to raise it." },
 ];
 
 function readForcedMode() {
@@ -62,16 +62,16 @@ export default function App() {
           style={{ color: TOKENS.cream, fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: 26, textAlign: "center" }}
           className="mb-1"
         >
-          Sabahınız Xeyir
+          Good Morning, Ganira
         </h1>
         <p style={{ color: TOKENS.muted, fontSize: 13.5, textAlign: "center" }} className="mb-8">
-          sənə xüsusi bir səhər sürprizi.
+          a little morning surprise, just for you.
         </p>
 
         {mode === null ? (
           <>
             <p style={{ color: TOKENS.muted, fontSize: 11.5, textAlign: "center" }} className="mb-4">
-              Hər oyunun öz linki var — kimə hansını göndərsən, yalnız o oyunu görəcək.
+              Each game has its own link — whoever opens it only sees that one game.
             </p>
             <div className="w-full flex flex-col gap-3">
               {GAMES.map((g) => {
@@ -113,7 +113,7 @@ export default function App() {
                     </button>
                     <button
                       onClick={() => copyLink(g.id)}
-                      aria-label={`${g.title} linkini kopyala`}
+                      aria-label={`Copy the ${g.title} link`}
                       style={{ background: TOKENS.bgDeep, color: TOKENS.cream, border: `1px solid ${TOKENS.line}` }}
                       className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer flex-shrink-0"
                     >
