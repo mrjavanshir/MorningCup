@@ -132,10 +132,10 @@ export default function App() {
           style={{ color: TOKENS.cream, fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: 26, textAlign: "center" }}
           className="mb-1"
         >
-          {isNight ? "Good Night, Ganira" : "Good Morning, Ganira"}
+          {isNight ? "Good Night, Ganira" : "Hello, Ganira"}
         </h1>
         <p style={{ color: TOKENS.muted, fontSize: 13.5, textAlign: "center" }} className="mb-8">
-          {isNight ? "something small before you sleep." : "a little morning surprise, just for you."}
+          {isNight ? "something small before you sleep." : "a little something, whenever you need it."}
         </p>
 
         {locked ? (
