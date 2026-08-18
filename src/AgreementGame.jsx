@@ -76,7 +76,7 @@ export default function AgreementGame() {
   };
 
   const copyResultLink = async () => {
-    const link = `${window.location.origin}${import.meta.env.BASE_URL}games/agreement?d=${encodeState(activeClauses)}`;
+    const link = `${window.location.origin}${import.meta.env.BASE_URL}games/agreement?d=${encodeState(clauses)}`;
     try {
       await navigator.clipboard.writeText(link);
       setCopied(true);
