@@ -175,6 +175,71 @@ export const MOODS = [
   },
 ];
 
+// "Read me when..." jar. Colours follow the label on the physical jars.
+// Translations are common English renderings — swap for whichever you prefer.
+export const VERSE_JAR = [
+  {
+    key: "happy",
+    label: "Happy",
+    color: "#E8B93E",
+    verses: [
+      { text: "Say, “In the bounty of Allah and in His mercy — in that let them rejoice.”", ref: "Yunus 10:58" },
+      { text: "So which of the favours of your Lord would you deny?", ref: "Ar-Rahman 55:13" },
+      { text: "So remember Me; I will remember you. And be grateful to Me and do not deny Me.", ref: "Al-Baqarah 2:152" },
+    ],
+  },
+  {
+    key: "anxious",
+    label: "Anxious",
+    color: "#4E9B5B",
+    verses: [
+      { text: "For indeed, with hardship comes ease. Indeed, with hardship comes ease.", ref: "Ash-Sharh 94:5-6" },
+      { text: "Verily, in the remembrance of Allah do hearts find rest.", ref: "Ar-Ra'd 13:28" },
+      { text: "And whoever relies upon Allah — then He is sufficient for him.", ref: "At-Talaq 65:3" },
+    ],
+  },
+  {
+    key: "thankful",
+    label: "Thankful",
+    color: "#E07B39",
+    verses: [
+      { text: "If you are grateful, I will surely increase you in favour.", ref: "Ibrahim 14:7" },
+      { text: "And if you should count the favours of Allah, you could not enumerate them.", ref: "An-Nahl 16:18" },
+      { text: "And He gave you from all you asked of Him.", ref: "Ibrahim 14:34" },
+    ],
+  },
+  {
+    key: "lonely",
+    label: "Lonely",
+    color: "#7FB3D5",
+    verses: [
+      { text: "And We are closer to him than his jugular vein.", ref: "Qaf 50:16" },
+      { text: "And when My servants ask you concerning Me — indeed I am near.", ref: "Al-Baqarah 2:186" },
+      { text: "Your Lord has not forsaken you, nor has He become displeased.", ref: "Ad-Duha 93:3" },
+    ],
+  },
+  {
+    key: "angry",
+    label: "Angry",
+    color: "#C0392B",
+    verses: [
+      { text: "…those who restrain anger and who pardon the people — and Allah loves the doers of good.", ref: "Ali 'Imran 3:134" },
+      { text: "Repel evil with that which is better.", ref: "Fussilat 41:34" },
+      { text: "And whoever is patient and forgives — indeed, that is of the matters requiring determination.", ref: "Ash-Shura 42:43" },
+    ],
+  },
+  {
+    key: "sad",
+    label: "Sad",
+    color: "#2E6DA4",
+    verses: [
+      { text: "Do not grieve; indeed Allah is with us.", ref: "At-Tawbah 9:40" },
+      { text: "Do not despair of the mercy of Allah.", ref: "Az-Zumar 39:53" },
+      { text: "Allah does not burden a soul beyond that it can bear.", ref: "Al-Baqarah 2:286" },
+    ],
+  },
+];
+
 export const SURPRISES = [
   { kind: "Question", text: "What's a completely useless skill you're weirdly good at?" },
   { kind: "If you were here", text: "If you were here right now I'd be talking too much and you'd be pretending to mind." },
