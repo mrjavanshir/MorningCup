@@ -1,14 +1,20 @@
 import React, { useState } from "react";
-import { ArrowUpFromLine, Check, Link2, Stamp, Sun, Sunrise } from "lucide-react";
+import { ArrowUpFromLine, BatteryCharging, Check, Link2, ListChecks, Scale, Stamp, Sun, Sunrise } from "lucide-react";
 import { TOKENS } from "./messages.js";
 import SunGame from "./SunGame.jsx";
 import DaybreakGame from "./DaybreakGame.jsx";
 import AgreementGame from "./AgreementGame.jsx";
+import ThisOrThatGame from "./ThisOrThatGame.jsx";
+import RechargeGame from "./RechargeGame.jsx";
+import PlansGame from "./PlansGame.jsx";
 
 const GAMES = [
   { id: "sun", icon: Sunrise, title: "Sunrise", desc: "Tap to raise it." },
   { id: "daybreak", icon: ArrowUpFromLine, title: "Daybreak", desc: "Drag to bring up the sun." },
   { id: "agreement", icon: Stamp, title: "Agreement", desc: "Stamp it to make it official." },
+  { id: "this-or-that", icon: Scale, title: "This or That", desc: "Pick a side, compare picks." },
+  { id: "recharge", icon: BatteryCharging, title: "Recharge", desc: "Score your day, get a boost." },
+  { id: "plans", icon: ListChecks, title: "Future Plans", desc: "List ideas, see what overlaps." },
 ];
 
 function parseRoute() {
@@ -63,8 +69,12 @@ export default function App() {
         .db-star { animation: db-twinkle 2s ease-in-out infinite; }
         @keyframes fs-stamp { 0% { transform: scale(2.4) rotate(-18deg); opacity: 0; } 60% { transform: scale(0.92) rotate(-14deg); opacity: 1; } 100% { transform: scale(1) rotate(-14deg); opacity: 1; } }
         .fs-stamp-in { animation: fs-stamp 0.5s cubic-bezier(.3,1.4,.5,1) forwards; }
+        @keyframes rg-fill { from { width: 0%; } to { width: 100%; } }
+        .rg-charge-fill { animation: rg-fill 1.2s ease-out forwards; }
+        @keyframes rg-pulse { 0%, 100% { opacity: 0.6; transform: scale(1); } 50% { opacity: 1; transform: scale(1.15); } }
+        .rg-charge-pulse { animation: rg-pulse 0.6s ease-in-out infinite; }
         @media (prefers-reduced-motion: reduce) {
-          .cf-fade, .sn-rays, .cf-nudge, .db-star, .fs-stamp-in { animation: none; }
+          .cf-fade, .sn-rays, .cf-nudge, .db-star, .fs-stamp-in, .rg-charge-fill, .rg-charge-pulse { animation: none; }
         }
       `}</style>
 
@@ -141,6 +151,9 @@ export default function App() {
             {route.id === "sun" && <SunGame />}
             {route.id === "daybreak" && <DaybreakGame />}
             {route.id === "agreement" && <AgreementGame />}
+            {route.id === "this-or-that" && <ThisOrThatGame />}
+            {route.id === "recharge" && <RechargeGame />}
+            {route.id === "plans" && <PlansGame />}
           </>
         )}
       </div>

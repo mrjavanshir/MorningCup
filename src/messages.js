@@ -24,3 +24,36 @@ export const DAYBREAK_MESSAGES = [
   { cat: "Morning", text: "Good morning — hope your day is full of energy." },
   { cat: "Like the Sun", text: "Like the sun, hope you light up everywhere you go today )" },
 ];
+
+export const RECHARGE_MESSAGES = {
+  day: [
+    "However today's gone, it doesn't get the final say — tomorrow gets a clean start.",
+    "Rough days don't erase the good ones. This is just one chapter.",
+    "Whatever happened today, you handled it. That's worth something.",
+  ],
+  energy: [
+    "Borrow some of mine — consider this a small transfer of energy your way.",
+    "Low battery is temporary. Rest counts as progress too.",
+    "Take five real minutes for yourself. Everything else can wait.",
+  ],
+  happiness: [
+    "Sending you a reason to smile, even a small one.",
+    "Whatever's weighing on you, you deserve lighter days ahead.",
+    "You don't have to be happy right now — just know someone's thinking of you.",
+  ],
+};
+
+export const RECHARGE_TIPS = {
+  day: [
+    "Write down one good thing from today, even a small one.",
+    "Let tomorrow be a clean slate — no carryover required.",
+  ],
+  energy: [
+    "Drink a full glass of water, right now.",
+    "Step outside for two minutes, even just to the window.",
+  ],
+  happiness: [
+    "Put on one song that makes you want to move.",
+    "Text someone who makes you laugh.",
+  ],
+};
