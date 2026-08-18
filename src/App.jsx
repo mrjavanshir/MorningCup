@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ArrowUpFromLine, BatteryCharging, Bird, Check, Eraser, Link2, ListChecks, Moon, MousePointerClick, NotebookPen, Scale, Sparkles, Stamp, Sun, Sunrise, VenetianMask, Zap } from "lucide-react";
+import { ArrowUpFromLine, BatteryCharging, Bird, Check, Eraser, Gem, Gift, Link2, ListChecks, Moon, MousePointerClick, NotebookPen, Scale, Smile, Sparkles, Stamp, Sun, Sunrise, Sunset, VenetianMask, Zap } from "lucide-react";
 import { TOKENS } from "./messages.js";
 import SunGame from "./SunGame.jsx";
 import DaybreakGame from "./DaybreakGame.jsx";
@@ -12,8 +12,12 @@ import EnergizerGame from "./EnergizerGame.jsx";
 import ScratchGame from "./ScratchGame.jsx";
 import TruthsGame from "./TruthsGame.jsx";
 import ImpossibleGame from "./ImpossibleGame.jsx";
+import LittleMomentsGame from "./LittleMomentsGame.jsx";
+import MoodMirrorGame from "./MoodMirrorGame.jsx";
+import SurpriseBoxGame from "./SurpriseBoxGame.jsx";
 import CloseDayGame from "./CloseDayGame.jsx";
 import ThreeThingsGame from "./ThreeThingsGame.jsx";
+import HighlightsGame from "./HighlightsGame.jsx";
 
 const GAMES = [
   { id: "sun", icon: Sunrise, title: "Sunrise", desc: "Tap to raise it." },
@@ -27,8 +31,12 @@ const GAMES = [
   { id: "scratch", icon: Sparkles, title: "Scratch Card", desc: "Scratch the gold, claim a prize." },
   { id: "truths", icon: VenetianMask, title: "Two Truths & a Lie", desc: "Spot the one that isn't true." },
   { id: "impossible", icon: MousePointerClick, title: "The Impossible Button", desc: "It does not want to be pressed." },
+  { id: "little-moments", icon: Gem, title: "Little Moments", desc: "Take a seed, get a reason." },
+  { id: "mood", icon: Smile, title: "Mood Mirror", desc: "One tap, no explaining." },
+  { id: "surprise", icon: Gift, title: "Surprise Box", desc: "No idea what's inside." },
   { id: "close-day", icon: Eraser, title: "Close the Day", desc: "Dump it out, watch it go.", night: true },
   { id: "three-things", icon: NotebookPen, title: "Three Good Things", desc: "Log what went well today.", night: true },
+  { id: "highlights", icon: Sunset, title: "Highlights", desc: "Both share the best bit.", night: true },
 ];
 
 function parseRoute() {
@@ -224,8 +232,12 @@ export default function App() {
             {route.id === "scratch" && <ScratchGame />}
             {route.id === "truths" && <TruthsGame />}
             {route.id === "impossible" && <ImpossibleGame />}
+            {route.id === "little-moments" && <LittleMomentsGame />}
+            {route.id === "mood" && <MoodMirrorGame />}
+            {route.id === "surprise" && <SurpriseBoxGame />}
             {route.id === "close-day" && <CloseDayGame />}
             {route.id === "three-things" && <ThreeThingsGame />}
+            {route.id === "highlights" && <HighlightsGame />}
           </>
         )}
       </div>

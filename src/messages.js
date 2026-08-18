@@ -108,3 +108,84 @@ export const THREE_THINGS_CLOSERS = [
   "Logged. Today wasn't a total write-off after all.",
   "Filed under: evidence that it wasn't all bad.",
 ];
+
+// PLACEHOLDERS — the whole point of this one is that the lines are things
+// Javanshir actually noticed. Swap these for real ones.
+export const LITTLE_MOMENTS = [
+  "You explain things to people like you actually want them to understand, not like you want to be right.",
+  "You laugh at your own jokes before you finish them. It's a whole thing.",
+  "You remember what people told you weeks ago and bring it up like it's nothing.",
+  "You get visibly annoyed on other people's behalf. It's an underrated quality.",
+  "You ask the second question, not just the polite first one.",
+  "You are incapable of walking past a dog without commenting on it.",
+  "You say 'anyway' when you've decided a conversation is over. It's very effective.",
+  "You give people your full attention, which almost nobody does anymore.",
+  "You're funnier when you're tired and you have no idea.",
+  "You take your work seriously without taking yourself seriously.",
+  "You notice when someone's gone quiet in a room.",
+  "You tell stories out of order and somehow they still land.",
+  "You defend your opinions on small things with completely unnecessary conviction.",
+  "You make the people around you slightly braver.",
+  "You're warm to people who can do nothing for you.",
+  "You reread messages before sending them. I can tell.",
+  "You have a specific voice for when you're being polite to someone you find ridiculous.",
+  "You're the person people text when something good happens.",
+];
+
+export const MOODS = [
+  {
+    key: "good",
+    label: "Good, actually",
+    responses: [
+      { note: "Noted and logged. Days like this are legally required to be enjoyed.", song: "Something loud on the way home." },
+      { note: "Good. Don't examine it too closely, just take it.", song: "Whatever was playing the last time you felt like this." },
+    ],
+  },
+  {
+    key: "tired",
+    label: "Tired",
+    responses: [
+      { note: "Then that's the whole update. Nothing else is required of you today.", song: "Something slow, low volume." },
+      { note: "Tired is information, not a character flaw. Sit down.", song: "The album you know well enough to stop listening to." },
+    ],
+  },
+  {
+    key: "stressed",
+    label: "Stressed",
+    responses: [
+      { note: "Whatever it is, it's smaller than it currently feels. Not small. Smaller.", song: "Something with no lyrics for ten minutes." },
+      { note: "You're allowed to do one thing at a time. That's the maximum anyway.", song: "Something you can walk fast to." },
+    ],
+  },
+  {
+    key: "annoyed",
+    label: "Annoyed",
+    responses: [
+      { note: "Good. Stay annoyed for a bit, it's usually justified when you are.", song: "Something with a bit of aggression in it." },
+      { note: "You're not overreacting. I've reviewed the case and I'm on your side.", song: "Something loud and slightly petty." },
+    ],
+  },
+  {
+    key: "flat",
+    label: "Flat",
+    responses: [
+      { note: "Flat days are just days. They don't mean anything about you.", song: "Something familiar, nothing new." },
+      { note: "No feelings available today. That's a valid setting.", song: "Whatever needs zero effort." },
+    ],
+  },
+];
+
+export const SURPRISES = [
+  { kind: "Question", text: "What's a completely useless skill you're weirdly good at?" },
+  { kind: "If you were here", text: "If you were here right now I'd be talking too much and you'd be pretending to mind." },
+  { kind: "Joke", text: "I told a group they'd learn by doing. They did nothing. Technically still a lesson." },
+  { kind: "Question", text: "What's the worst piece of advice you've ever been given with total confidence?" },
+  { kind: "Small dare", text: "Send a voice message describing your day as if narrating a nature documentary." },
+  { kind: "If you were here", text: "If you were here right now I'd suggest food, then immediately have no opinion on what kind." },
+  { kind: "Question", text: "Which compliment do you never believe when people give it to you?" },
+  { kind: "Joke", text: "They say a good trainer makes themselves unnecessary. Bold career strategy, honestly." },
+  { kind: "Small dare", text: "Text me one word that sums up today. Only one. No explaining." },
+  { kind: "If you were here", text: "If you were here right now I'd let you pick, then quietly steer it toward what I wanted." },
+  { kind: "Question", text: "What's something you changed your mind about this year?" },
+  { kind: "Small dare", text: "Take a photo of the least interesting thing near you and send it with no context." },
+];
