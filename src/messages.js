@@ -25,6 +25,7 @@ export const SUN_MESSAGES = [
   { cat: "Today", text: "Skies are clear — hoping your morning opens up just as easily, Ganira))" },
   { cat: "Reminder", text: "The sun starts fresh every morning — so does my excuse to say good morning to you." },
   { cat: "Random Thought", text: "Heard somewhere that goofy girls make life better. Purely academic interest:)" },
+  { cat: "Before You Start", text: "Work's about to start — hoping today goes smoothly and turns out to be a really good one for you, Ganira." },
 ];
 
 export function pickMessage(current, list = MESSAGES) {
