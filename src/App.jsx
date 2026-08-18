@@ -1,26 +1,32 @@
 import React, { useState } from "react";
-import { Check, Coffee, Link2, Sun, Sunrise } from "lucide-react";
+import { ArrowUpFromLine, Check, Link2, Stamp, Sun, Sunrise } from "lucide-react";
 import { TOKENS } from "./messages.js";
-import CupGame from "./CupGame.jsx";
 import SunGame from "./SunGame.jsx";
+import DaybreakGame from "./DaybreakGame.jsx";
+import AgreementGame from "./AgreementGame.jsx";
 
 const GAMES = [
-  { id: "cup", icon: Coffee, title: "The Cup", desc: "Tap to fill it up." },
   { id: "sun", icon: Sunrise, title: "Sunrise", desc: "Tap to raise it." },
+  { id: "daybreak", icon: ArrowUpFromLine, title: "Daybreak", desc: "Drag to bring up the sun." },
+  { id: "agreement", icon: Stamp, title: "Agreement", desc: "Stamp it to make it official." },
 ];
 
-function readForcedMode() {
+function parseRoute() {
   const path = window.location.pathname.slice(import.meta.env.BASE_URL.length).replace(/\/+$/, "");
-  return GAMES.some((g) => g.id === path) ? path : null;
+  const segments = path.split("/").filter(Boolean);
+  if (segments.length === 1 && segments[0] === "sun") return { view: "game", id: "sun" };
+  if (segments[0] !== "games") return { view: "blank" };
+  if (segments.length === 1) return { view: "hub" };
+  if (segments.length === 2 && GAMES.some((g) => g.id === segments[1])) return { view: "game", id: segments[1] };
+  return { view: "blank" };
 }
 
 function gameLink(id) {
-  return `${window.location.origin}${import.meta.env.BASE_URL}${id}`;
+  return `${window.location.origin}${import.meta.env.BASE_URL}games/${id}`;
 }
 
 export default function App() {
-  const [forced] = useState(readForcedMode);
-  const [mode, setMode] = useState(forced);
+  const [route, setRoute] = useState(parseRoute);
   const [copiedId, setCopiedId] = useState(null);
 
   const copyLink = async (id) => {
@@ -33,21 +39,18 @@ export default function App() {
     }
   };
 
+  if (route.view === "blank") {
+    return <div style={{ background: TOKENS.bgDeep, minHeight: "100vh" }} />;
+  }
+
   return (
     <div
       style={{ background: TOKENS.bgDeep, minHeight: "100vh", fontFamily: "'Manrope', sans-serif" }}
       className="w-full flex flex-col items-center px-4 py-8"
     >
       <style>{`
-        @keyframes cf-steam {
-          0% { transform: translateY(0) scaleX(1); opacity: 0; }
-          25% { opacity: 0.55; }
-          100% { transform: translateY(-46px) scaleX(1.6); opacity: 0; }
-        }
-        .cf-steam { animation-name: cf-steam; animation-timing-function: ease-out; animation-iteration-count: infinite; }
         @keyframes cf-fade { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: translateY(0); } }
         .cf-fade { animation: cf-fade 0.4s ease-out; }
-        .cf-cup:active { transform: scale(0.97); }
         .sn-sun-btn:active { transform: scale(0.97); }
         @keyframes sn-pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 0.9; } }
         .sn-rays { animation: sn-pulse 2.4s ease-in-out infinite; }
@@ -56,8 +59,12 @@ export default function App() {
           50% { transform: scale(1.035); box-shadow: 0 0 16px 2px rgba(216,168,87,0.55); }
         }
         .cf-nudge { animation: cf-nudge 1.8s ease-in-out 1.2s infinite; }
+        @keyframes db-twinkle { 0%, 100% { opacity: 0.9; } 50% { opacity: 0.3; } }
+        .db-star { animation: db-twinkle 2s ease-in-out infinite; }
+        @keyframes fs-stamp { 0% { transform: scale(2.4) rotate(-18deg); opacity: 0; } 60% { transform: scale(0.92) rotate(-14deg); opacity: 1; } 100% { transform: scale(1) rotate(-14deg); opacity: 1; } }
+        .fs-stamp-in { animation: fs-stamp 0.5s cubic-bezier(.3,1.4,.5,1) forwards; }
         @media (prefers-reduced-motion: reduce) {
-          .cf-steam, .cf-fade, .sn-rays, .cf-nudge { animation: none; }
+          .cf-fade, .sn-rays, .cf-nudge, .db-star, .fs-stamp-in { animation: none; }
         }
       `}</style>
 
@@ -73,7 +80,7 @@ export default function App() {
           a little morning surprise, just for you.
         </p>
 
-        {mode === null ? (
+        {route.view === "hub" ? (
           <>
             <p style={{ color: TOKENS.muted, fontSize: 11.5, textAlign: "center" }} className="mb-4">
               Each game has its own link — whoever opens it only sees that one game.
@@ -93,7 +100,7 @@ export default function App() {
                     className="w-full flex items-center gap-3"
                   >
                     <button
-                      onClick={() => setMode(g.id)}
+                      onClick={() => setRoute({ view: "game", id: g.id })}
                       style={{ background: "none", border: "none", textAlign: "left", cursor: "pointer", padding: "8px 0" }}
                       className="flex items-center gap-3 flex-1 min-w-0"
                     >
@@ -131,8 +138,9 @@ export default function App() {
           </>
         ) : (
           <>
-            {mode === "cup" && <CupGame />}
-            {mode === "sun" && <SunGame />}
+            {route.id === "sun" && <SunGame />}
+            {route.id === "daybreak" && <DaybreakGame />}
+            {route.id === "agreement" && <AgreementGame />}
           </>
         )}
       </div>
