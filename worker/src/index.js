@@ -100,6 +100,31 @@ export default {
 
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
 
+    // ---- named shared documents: one record per name, both people write ----
+    // Unlike a collection there is no per-record key to hand out, because both
+    // sides have to write to the same document (the khatm). The gate is the
+    // owner key, which the bundle carries — obscurity, as everywhere here.
+    const doc = url.pathname.match(/^\/doc\/([a-z][a-z0-9-]{0,30})$/);
+    if (doc) {
+      const key = `doc:${doc[1]}`;
+      if (request.method === "GET") {
+        const stored = await env.STORE.get(key);
+        return new Response(stored === null ? "{}" : stored, {
+          status: 200,
+          headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...cors },
+        });
+      }
+      if (request.method === "PUT") {
+        if (!env.OWNER_KEY || !keysMatch(request.headers.get("X-Write-Key") || "", env.OWNER_KEY)) {
+          return json({ error: "wrong write key" }, 403, cors);
+        }
+        const body = await readJsonBody(request);
+        if (body.error) return json({ error: body.error }, body.status, cors);
+        await env.STORE.put(key, body.raw);
+        return new Response(null, { status: 204, headers: cors });
+      }
+    }
+
     // ---- shared-games config: one fixed record, world-readable, owner-writable ----
     // Unlike collections this has a fixed key, because her hub has to find it
     // with no link to go on. It never expires.

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Sparkle, ArrowUpFromLine, Check, Eraser, Gift, Link2, Moon, NotebookPen, Scale, Scroll, Stamp, Sun, Sunrise, Sunset } from "lucide-react";
+import { BookOpen, Sparkle, ArrowUpFromLine, Check, Eraser, Gift, Link2, Moon, NotebookPen, Scale, Scroll, Stamp, Sun, Sunrise, Sunset } from "lucide-react";
 import { TOKENS } from "./messages.js";
 import SunGame from "./SunGame.jsx";
 import DaybreakGame from "./DaybreakGame.jsx";
@@ -12,6 +12,7 @@ import ThreeThingsGame from "./ThreeThingsGame.jsx";
 import HighlightsGame from "./HighlightsGame.jsx";
 import NamesGame from "./NamesGame.jsx";
 import SharedSettings from "./SharedSettings.jsx";
+import KhatmGame from "./KhatmGame.jsx";
 import { cachedConfig, clearOwner, fetchSharedConfig, readOwner, unlockOwner } from "./owner.js";
 
 // `shared` controls only what the hub LISTS. Every game stays reachable at its
@@ -24,6 +25,7 @@ const GAMES = [
   { id: "surprise", icon: Gift, title: "Surprise Box", desc: "No idea what's inside.", shared: true },
   { id: "jar", icon: Scroll, title: "Verses Jar", desc: "Read me when…", shared: true },
   { id: "names", icon: Sparkle, title: "The 99 Names", desc: "One at a time, or all of them.", shared: true },
+  { id: "khatm", icon: BookOpen, title: "Khatm Together", desc: "Thirty juz, between the two of you.", shared: true },
   { id: "close-day", icon: Eraser, title: "Close the Day", desc: "Dump it out, watch it go.", night: true, shared: true },
   { id: "three-things", icon: NotebookPen, title: "Three Good Things", desc: "Log what went well today.", night: true, shared: true },
   { id: "highlights", icon: Sunset, title: "Highlights", desc: "Both share the best bit.", night: true, shared: true },
@@ -378,6 +380,7 @@ export default function App() {
             {route.id === "surprise" && <SurpriseBoxGame />}
             {route.id === "jar" && <VerseJarGame />}
             {route.id === "names" && <NamesGame />}
+            {route.id === "khatm" && <KhatmGame isOwner={isOwner} />}
             {route.id === "close-day" && <CloseDayGame />}
             {route.id === "three-things" && <ThreeThingsGame />}
             {route.id === "highlights" && <HighlightsGame />}
