@@ -21,8 +21,16 @@ const LANGS = [
 // Only the surah chrome is localised — the translation itself comes from the
 // chosen edition, and the transliterated name ("Al-Alaq") reads the same either way.
 const STRINGS = {
-  en: { ayahs: "ayahs", Meccan: "Meccan", Medinan: "Medinan", revealed: "revealed", read: "you've read" },
-  az: { ayahs: "ayə", Meccan: "Məkkə", Medinan: "Mədinə", revealed: "nazil sırası", read: "oxuduğun" },
+  en: {
+    ayahs: "ayahs", Meccan: "Meccan", Medinan: "Medinan", revealed: "revealed", read: "you've read",
+    title: "Read the Qur'an", tagline: "a few ayahs at a time. no rush.",
+    progress: (n, total) => `${n} of ${total} ayahs read`, begin: "Pick a surah to begin",
+  },
+  az: {
+    ayahs: "ayə", Meccan: "Məkkə", Medinan: "Mədinə", revealed: "nazil sırası", read: "oxuduğun",
+    title: "Quran oxu", tagline: "tələsmədən, az-az.",
+    progress: (n, total) => `${total} ayədən ${n} oxundu`, begin: "Başlamaq üçün surə seç",
+  },
 };
 const langKey = (id) => (id.startsWith("az") ? "az" : "en");
 
@@ -351,10 +359,13 @@ export default function QuranGame({ isOwner }) {
   return (
     <div className="w-full flex flex-col items-center">
       <p style={{ color: TOKENS.muted, fontSize: 13, textAlign: "center" }} className="mb-1">
-        Read the Qur'an
+        {t.title}
+      </p>
+      <p style={{ color: TOKENS.gold, fontSize: 11.5, textAlign: "center", opacity: 0.75 }} className="mb-1">
+        {t.tagline}
       </p>
       <p style={{ color: TOKENS.muted, fontSize: 11.5, textAlign: "center" }} className="mb-4">
-        {myTotal > 0 ? `${myTotal} of ${TOTAL_AYAHS} ayahs read` : "Pick a surah to begin"}
+        {myTotal > 0 ? t.progress(myTotal, TOTAL_AYAHS) : t.begin}
       </p>
 
       <div className="w-full flex flex-col gap-2 mb-2">
