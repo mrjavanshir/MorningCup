@@ -1,19 +1,10 @@
 import React, { useState } from "react";
-import { Sparkle, ArrowUpFromLine, BatteryCharging, Bird, Check, Eraser, Gem, Gift, Link2, ListChecks, Moon, MousePointerClick, NotebookPen, Scale, Scroll, Smile, Sparkles, Stamp, Sun, Sunrise, Sunset, VenetianMask, Zap } from "lucide-react";
+import { Sparkle, ArrowUpFromLine, Check, Eraser, Gift, Link2, Moon, NotebookPen, Scale, Scroll, Stamp, Sun, Sunrise, Sunset } from "lucide-react";
 import { TOKENS } from "./messages.js";
 import SunGame from "./SunGame.jsx";
 import DaybreakGame from "./DaybreakGame.jsx";
 import AgreementGame from "./AgreementGame.jsx";
 import ThisOrThatGame from "./ThisOrThatGame.jsx";
-import RechargeGame from "./RechargeGame.jsx";
-import PlansGame from "./PlansGame.jsx";
-import OrigamiGame from "./OrigamiGame.jsx";
-import EnergizerGame from "./EnergizerGame.jsx";
-import ScratchGame from "./ScratchGame.jsx";
-import TruthsGame from "./TruthsGame.jsx";
-import ImpossibleGame from "./ImpossibleGame.jsx";
-import LittleMomentsGame from "./LittleMomentsGame.jsx";
-import MoodMirrorGame from "./MoodMirrorGame.jsx";
 import SurpriseBoxGame from "./SurpriseBoxGame.jsx";
 import VerseJarGame from "./VerseJarGame.jsx";
 import CloseDayGame from "./CloseDayGame.jsx";
@@ -26,15 +17,6 @@ const GAMES = [
   { id: "daybreak", icon: ArrowUpFromLine, title: "Daybreak", desc: "Drag to bring up the sun." },
   { id: "agreement", icon: Stamp, title: "Agreement", desc: "Stamp it to make it official." },
   { id: "this-or-that", icon: Scale, title: "This or That", desc: "Pick a side, compare picks." },
-  { id: "recharge", icon: BatteryCharging, title: "Recharge", desc: "Score your day, get a boost." },
-  { id: "plans", icon: ListChecks, title: "Future Plans", desc: "List ideas, see what overlaps." },
-  { id: "origami", icon: Bird, title: "Origami", desc: "Fold a flower or a swan." },
-  { id: "energizer", icon: Zap, title: "Energizer", desc: "20 seconds, no equipment." },
-  { id: "scratch", icon: Sparkles, title: "Scratch Card", desc: "Scratch the gold, claim a prize." },
-  { id: "truths", icon: VenetianMask, title: "Two Truths & a Lie", desc: "Spot the one that isn't true." },
-  { id: "impossible", icon: MousePointerClick, title: "The Impossible Button", desc: "It does not want to be pressed." },
-  { id: "little-moments", icon: Gem, title: "Little Moments", desc: "Take a seed, get a reason." },
-  { id: "mood", icon: Smile, title: "Mood Mirror", desc: "One tap, no explaining." },
   { id: "surprise", icon: Gift, title: "Surprise Box", desc: "No idea what's inside." },
   { id: "jar", icon: Scroll, title: "Verses Jar", desc: "Read me when…" },
   { id: "names", icon: Sparkle, title: "The 99 Names", desc: "One at a time, or all of them." },
@@ -111,20 +93,8 @@ export default function App() {
         .db-star { animation: db-twinkle 2s ease-in-out infinite; }
         @keyframes fs-stamp { 0% { transform: scale(2.4) rotate(-18deg); opacity: 0; } 60% { transform: scale(0.92) rotate(-14deg); opacity: 1; } 100% { transform: scale(1) rotate(-14deg); opacity: 1; } }
         .fs-stamp-in { animation: fs-stamp 0.5s cubic-bezier(.3,1.4,.5,1) forwards; }
-        @keyframes rg-fill { from { width: 0%; } to { width: 100%; } }
-        .rg-charge-fill { animation: rg-fill 1.2s ease-out forwards; }
-        @keyframes rg-pulse { 0%, 100% { opacity: 0.6; transform: scale(1); } 50% { opacity: 1; transform: scale(1.15); } }
-        .rg-charge-pulse { animation: rg-pulse 0.6s ease-in-out infinite; }
-        @keyframes og-pop { 0% { transform: scale(0.6); opacity: 0; } 60% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
-        .og-crane-pop { animation: og-pop 0.4s cubic-bezier(.3,1.4,.5,1) forwards; }
-        @keyframes og-unfold { 0% { transform: scaleY(0.05) rotateX(70deg); opacity: 0; } 100% { transform: scaleY(1) rotateX(0deg); opacity: 1; } }
-        .og-unfold-in { animation: og-unfold 0.5s ease-out forwards; transform-origin: top center; }
-        @keyframes en-drain { from { stroke-dashoffset: 0; } to { stroke-dashoffset: 377; } }
-        .en-ring-drain { animation: en-drain 20s linear forwards; }
-        @keyframes en-pop { 0% { transform: scale(0.95); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-        .en-pop { animation: en-pop 0.3s ease-out; }
         @media (prefers-reduced-motion: reduce) {
-          .cf-fade, .sn-rays, .cf-nudge, .db-star, .fs-stamp-in, .rg-charge-fill, .rg-charge-pulse, .og-crane-pop, .og-unfold-in, .en-ring-drain, .en-pop { animation: none; }
+          .cf-fade, .sn-rays, .cf-nudge, .db-star, .fs-stamp-in { animation: none; }
         }
       `}</style>
 
@@ -229,15 +199,6 @@ export default function App() {
             {route.id === "daybreak" && <DaybreakGame />}
             {route.id === "agreement" && <AgreementGame />}
             {route.id === "this-or-that" && <ThisOrThatGame />}
-            {route.id === "recharge" && <RechargeGame />}
-            {route.id === "plans" && <PlansGame />}
-            {route.id === "origami" && <OrigamiGame />}
-            {route.id === "energizer" && <EnergizerGame />}
-            {route.id === "scratch" && <ScratchGame />}
-            {route.id === "truths" && <TruthsGame />}
-            {route.id === "impossible" && <ImpossibleGame />}
-            {route.id === "little-moments" && <LittleMomentsGame />}
-            {route.id === "mood" && <MoodMirrorGame />}
             {route.id === "surprise" && <SurpriseBoxGame />}
             {route.id === "jar" && <VerseJarGame />}
             {route.id === "names" && <NamesGame />}
