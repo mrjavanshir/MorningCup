@@ -1,15 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, Pause, Play, Share2, Star, X } from "lucide-react";
+import { Check, ImageDown, Pause, Play, Share2, Star, X } from "lucide-react";
 import { TOKENS, VERSE_JAR } from "./messages.js";
 import { createCollection, readCollection, storeConfigured, updateCollection } from "./store.js";
+import { shareVerseCard } from "./verseImage.js";
 
 const PAPER = "#F6EEDE";
 const JAR_W = 300;
 const JAR_H = 380;
-const COLS = 10;
+const COLS = 12;
 const READ_KEY = "verse-jar-read";
 const KEPT_KEY = "verse-jar-kept";
+const NOTES_KEY = "verse-jar-notes";
+const NOTE_MAX = 220;
 const COLLECTION_KEY = "verse-jar-collection";
 const RECITER = "Alafasy_128kbps";
 
@@ -53,6 +56,24 @@ function loadIds(key) {
 function saveIds(key, map) {
   try {
     localStorage.setItem(key, JSON.stringify(Object.keys(map)));
+  } catch {
+    /* private mode / storage full */
+  }
+}
+
+function loadNotes() {
+  try {
+    const raw = localStorage.getItem(NOTES_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveNotes(notes) {
+  try {
+    localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
   } catch {
     /* private mode / storage full */
   }
@@ -106,6 +127,9 @@ function layoutPapers() {
   const top = 22;
   const cw = (JAR_W - 24) / COLS;
   const ch = (JAR_H - top - 24) / rows;
+  // Paper height has to follow the row height, or adding verses silently makes
+  // the papers overlap each other once the grid gets tall enough.
+  const maxH = Math.max(12, ch - 4);
   return order.map((p, i) => {
     const row = Math.floor(i / COLS);
     const col = i % COLS;
@@ -115,10 +139,10 @@ function layoutPapers() {
       cy: top + row * ch,
       cw,
       ch,
-      dx: Math.random() * 5 - 2.5,
-      dy: Math.random() * 5 - 2.5,
+      dx: Math.random() * 4 - 2,
+      dy: Math.random() * 4 - 2,
       tilt: Math.random() * 20 - 10,
-      h: 26 + Math.random() * 8,
+      h: Math.min(22 + Math.random() * 8, maxH),
     };
   });
 }
@@ -233,7 +257,7 @@ function GlassDressing() {
   );
 }
 
-function KeptList({ ids, title, subtitle, onBack, onShare, shareLabel }) {
+function KeptList({ ids, notes = {}, title, subtitle, onBack, onShare, shareLabel }) {
   const verses = ids.map((id) => ALL_PAPERS.find((p) => p.id === id)).filter(Boolean);
   return (
     <div className="w-full flex flex-col items-center">
@@ -288,6 +312,22 @@ function KeptList({ ids, title, subtitle, onBack, onShare, shareLabel }) {
               >
                 {v.ref}
               </p>
+              {notes[v.id] && (
+                <p
+                  style={{
+                    color: "#5A4632",
+                    fontSize: 12,
+                    fontStyle: "italic",
+                    lineHeight: 1.45,
+                    textAlign: "center",
+                    marginTop: 10,
+                    paddingTop: 10,
+                    borderTop: `1px dashed ${v.color}44`,
+                  }}
+                >
+                  “{notes[v.id]}”
+                </p>
+              )}
             </motion.div>
           ))}
         </div>
@@ -325,6 +365,9 @@ export default function VerseJarGame() {
   const [openId, setOpenId] = useState(readSharedId);
   const [read, setRead] = useState(loadRead);
   const [kept, setKept] = useState(() => loadIds(KEPT_KEY));
+  const [notes, setNotes] = useState(loadNotes);
+  const [noteDraft, setNoteDraft] = useState(null); // null = not editing
+  const [imageState, setImageState] = useState("idle"); // idle | working | saved
   const [shared, setShared] = useState(false);
   const [lid, setLid] = useState(() => (readSharedId() ? "open" : "closed"));
   const [playing, setPlaying] = useState(false);
@@ -355,9 +398,14 @@ export default function VerseJarGame() {
   // State is local-first: localStorage is the source of truth on this device,
   // and the collection is a copy that makes it portable and shareable. A failed
   // sync therefore costs nothing locally.
-  const syncCollection = async (nextKept, nextRead) => {
+  const syncCollection = async (nextKept, nextRead, nextNotes = notes) => {
     if (!storeConfigured()) return;
-    const payload = { kept: Object.keys(nextKept), read: Object.keys(nextRead) };
+    // Only notes on kept verses travel — a note on a verse she later un-kept
+    // should not keep showing up in a shared collection.
+    const keptNotes = Object.fromEntries(
+      Object.entries(nextNotes).filter(([id, text]) => nextKept[id] && text.trim())
+    );
+    const payload = { kept: Object.keys(nextKept), read: Object.keys(nextRead), notes: keptNotes };
     const existing = loadCollection();
     if (existing) {
       await updateCollection(existing.id, existing.key, payload);
@@ -382,6 +430,31 @@ export default function VerseJarGame() {
       syncCollection(next, read);
       return next;
     });
+  };
+
+  const shareImage = async () => {
+    if (imageState === "working") return;
+    setImageState("working");
+    try {
+      const result = await shareVerseCard(open);
+      setImageState(result === "downloaded" ? "saved" : "idle");
+    } catch {
+      setImageState("idle");
+    }
+    setTimeout(() => setImageState("idle"), 2200);
+  };
+
+  const saveNote = () => {
+    const text = (noteDraft || "").trim().slice(0, NOTE_MAX);
+    setNotes((prev) => {
+      const next = { ...prev };
+      if (text) next[openId] = text;
+      else delete next[openId];
+      saveNotes(next);
+      syncCollection(kept, read, next);
+      return next;
+    });
+    setNoteDraft(null);
   };
 
   const shareCollection = async () => {
@@ -507,6 +580,7 @@ export default function VerseJarGame() {
     return (
       <KeptList
         ids={sharedCollection.kept || []}
+        notes={sharedCollection.notes || {}}
         title="Verses she kept"
         subtitle={`${(sharedCollection.kept || []).length} of ${ALL_PAPERS.length}`}
       />
@@ -517,6 +591,7 @@ export default function VerseJarGame() {
     return (
       <KeptList
         ids={Object.keys(kept)}
+        notes={notes}
         title="Verses you've kept"
         subtitle={`${Object.keys(kept).length} of ${ALL_PAPERS.length}`}
         onBack={() => setShowKept(false)}
@@ -903,7 +978,80 @@ export default function VerseJarGame() {
                     >
                       {shared ? <Check size={13} /> : <Share2 size={13} />} {shared ? "Copied" : "Share"}
                     </button>
+                    <button
+                      onClick={shareImage}
+                      aria-label="Share this verse as an image"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 7,
+                        background: "transparent",
+                        border: `1px solid ${open.color}55`,
+                        color: open.color,
+                        borderRadius: 9999,
+                        padding: "7px 16px",
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        opacity: imageState === "working" ? 0.6 : 1,
+                      }}
+                    >
+                      {imageState === "saved" ? <Check size={13} /> : <ImageDown size={13} />}{" "}
+                      {imageState === "working" ? "…" : imageState === "saved" ? "Saved" : "Image"}
+                    </button>
                   </div>
+                  {kept[open.id] && (
+                    <div style={{ marginTop: 14, borderTop: `1px dashed ${open.color}44`, paddingTop: 12 }}>
+                      {noteDraft !== null ? (
+                        <>
+                          <textarea
+                            value={noteDraft}
+                            onChange={(e) => setNoteDraft(e.target.value.slice(0, NOTE_MAX))}
+                            placeholder="Why this one?"
+                            rows={2}
+                            autoFocus
+                            style={{
+                              width: "100%",
+                              background: "rgba(0,0,0,0.04)",
+                              border: `1px solid ${open.color}44`,
+                              borderRadius: 8,
+                              color: "#2A1620",
+                              fontFamily: "'Manrope', sans-serif",
+                              fontSize: 12.5,
+                              padding: "8px 10px",
+                              resize: "none",
+                            }}
+                          />
+                          <div style={{ display: "flex", justifyContent: "center", gap: 14, marginTop: 8 }}>
+                            <button onClick={saveNote} style={{ color: open.color, fontSize: 11.5, fontWeight: 700 }}>
+                              Save
+                            </button>
+                            <button onClick={() => setNoteDraft(null)} style={{ color: "#8C7355", fontSize: 11.5 }}>
+                              Cancel
+                            </button>
+                          </div>
+                        </>
+                      ) : notes[open.id] ? (
+                        <button
+                          onClick={() => setNoteDraft(notes[open.id])}
+                          style={{ display: "block", width: "100%", textAlign: "center", cursor: "pointer" }}
+                        >
+                          <p style={{ color: "#5A4632", fontSize: 12.5, fontStyle: "italic", lineHeight: 1.45 }}>
+                            “{notes[open.id]}”
+                          </p>
+                          <span style={{ color: "#8C7355", fontSize: 10.5 }}>tap to edit</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setNoteDraft("")}
+                          style={{ display: "block", margin: "0 auto", color: "#8C7355", fontSize: 11.5 }}
+                        >
+                          + Add a note
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   {/* Dismiss lives on the paper itself: the paper is taller than the
                       jar once the Arabic is in, so anything below it gets covered. */}
                   <button
