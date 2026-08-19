@@ -23,13 +23,39 @@ const LANGS = [
 const STRINGS = {
   en: {
     ayahs: "ayahs", Meccan: "Meccan", Medinan: "Medinan", revealed: "revealed", read: "you've read",
-    title: "Read the Qur'an", tagline: "a few ayahs at a time. no rush.",
+    title: "Read the Qur'an", tagline: "start anywhere — it keeps your place.",
     progress: (n, total) => `${n} of ${total} ayahs read`, begin: "Pick a surah to begin",
+    allSurahs: "All surahs", inOrder: "In order", asRevealed: "As revealed",
+    continueFrom: (name, s, a) => `Continue from ${name} ${s}:${a}`,
+    markAll: (n) => `Mark all ${n} ayahs read`,
+    undoRead: (name) => `${name} read — tap to undo`,
+    readToHere: "Read to here", youAreHere: "You're here",
+    listen: "Listen", stop: "Stop", share: "Share",
+    loading: "Loading…",
+    failed: "Couldn't load this surah. It needs the network the first time; after that it's saved for offline.",
+    you: "You", prev: "Previous surah", next: "Next surah",
+    playAyah: (n) => `Play ayah ${n}`, stopAyah: (n) => `Stop ayah ${n}`,
+    shareAyah: (n) => `Share ayah ${n} as an image`, markTo: (n) => `Read to ayah ${n}`,
+    needStore: "This one needs the store — set VITE_STORE_URL and rebuild.",
+    preview: "PREVIEW", sendIt: "Share this", rendering: "Rendering…", saved: "Saved", sent: "Shared", preparing: "Preparing…",
   },
   az: {
     ayahs: "ayə", Meccan: "Məkkə", Medinan: "Mədinə", revealed: "nazil sırası", read: "oxuduğun",
-    title: "Quran oxu", tagline: "tələsmədən, az-az.",
+    title: "Quran oxu", tagline: "istədiyin yerdən başla — yerini yadda saxlayır.",
     progress: (n, total) => `${total} ayədən ${n} oxundu`, begin: "Başlamaq üçün surə seç",
+    allSurahs: "Bütün surələr", inOrder: "Sıra ilə", asRevealed: "Nazil sırası ilə",
+    continueFrom: (name, s, a) => `${name} ${s}:${a} — davam et`,
+    markAll: (n) => `Bütün ${n} ayəni oxundu işarələ`,
+    undoRead: (name) => `${name} oxundu — geri al`,
+    readToHere: "Buraya qədər oxudum", youAreHere: "Buradasan",
+    listen: "Dinlə", stop: "Dayandır", share: "Paylaş",
+    loading: "Yüklənir…",
+    failed: "Bu surə yüklənmədi. İlk dəfə internet lazımdır, sonra oflayn saxlanılır.",
+    you: "Sən", prev: "Əvvəlki surə", next: "Növbəti surə",
+    playAyah: (n) => `${n}-ci ayəni dinlə`, stopAyah: (n) => `${n}-ci ayəni dayandır`,
+    shareAyah: (n) => `${n}-ci ayəni şəkil kimi paylaş`, markTo: (n) => `${n}-ci ayəyə qədər oxudum`,
+    needStore: "Bunun üçün store lazımdır — VITE_STORE_URL təyin edib yenidən qur.",
+    preview: "ÖNBAXIŞ", sendIt: "Bunu paylaş", rendering: "Hazırlanır…", saved: "Yadda saxlanıldı", sent: "Paylaşıldı", preparing: "Hazırlanır…",
   },
 };
 const langKey = (id) => (id.startsWith("az") ? "az" : "en");
@@ -202,7 +228,7 @@ export default function QuranGame({ isOwner }) {
   if (!docsAvailable()) {
     return (
       <p style={{ color: TOKENS.muted, fontSize: 13, textAlign: "center" }} className="mt-6">
-        This one needs the store — set VITE_STORE_URL and rebuild.
+        {STRINGS[langKey(stored(LANG_KEY, "en.sahih"))].needStore}
       </p>
     );
   }
@@ -214,7 +240,7 @@ export default function QuranGame({ isOwner }) {
     return (
       <div className="w-full flex flex-col items-center">
         <div className="w-full flex items-center justify-between mb-1">
-          <button onClick={() => setOpenSurah(openSurah > 1 ? openSurah - 1 : null)} aria-label="Previous surah" style={{ color: TOKENS.muted, padding: 6 }}>
+          <button onClick={() => setOpenSurah(openSurah > 1 ? openSurah - 1 : null)} aria-label={t.prev} style={{ color: TOKENS.muted, padding: 6 }}>
             <ChevronLeft size={18} />
           </button>
           <div style={{ textAlign: "center" }}>
@@ -224,7 +250,7 @@ export default function QuranGame({ isOwner }) {
               {readHere > 0 && ` · ${t.read} ${readHere}`}
             </p>
           </div>
-          <button onClick={() => setOpenSurah(openSurah < 114 ? openSurah + 1 : null)} aria-label="Next surah" style={{ color: TOKENS.muted, padding: 6 }}>
+          <button onClick={() => setOpenSurah(openSurah < 114 ? openSurah + 1 : null)} aria-label={t.next} style={{ color: TOKENS.muted, padding: 6 }}>
             <ChevronRight size={18} />
           </button>
         </div>
@@ -243,13 +269,13 @@ export default function QuranGame({ isOwner }) {
           }}
           className="flex items-center justify-center gap-2 mb-4"
         >
-          <List size={14} /> All surahs
+          <List size={14} /> {t.allSurahs}
         </motion.button>
 
-        {loadState === "loading" && <p style={{ color: TOKENS.muted, fontSize: 12.5 }} className="mt-4">Loading…</p>}
+        {loadState === "loading" && <p style={{ color: TOKENS.muted, fontSize: 12.5 }} className="mt-4">{t.loading}</p>}
         {loadState === "failed" && (
           <p style={{ color: TOKENS.muted, fontSize: 12.5, textAlign: "center" }} className="mt-4">
-            Couldn't load this surah. It needs the network the first time; after that it's saved for offline.
+            {t.failed}
           </p>
         )}
 
@@ -279,24 +305,24 @@ export default function QuranGame({ isOwner }) {
                   <div className="flex items-center gap-4">
                     <button
                       onClick={() => playAyah(a.n)}
-                      aria-label={playing === a.n ? `Stop ayah ${a.n}` : `Play ayah ${a.n}`}
+                      aria-label={playing === a.n ? t.stopAyah(a.n) : t.playAyah(a.n)}
                       style={{ display: "flex", alignItems: "center", gap: 5, color: "#8C7355", fontSize: 10.5, fontWeight: 700 }}
                     >
-                      {playing === a.n ? <Pause size={12} /> : <Play size={12} />} {playing === a.n ? "Stop" : "Listen"}
+                      {playing === a.n ? <Pause size={12} /> : <Play size={12} />} {playing === a.n ? t.stop : t.listen}
                     </button>
                     <button
                       onClick={() => shareAyah(a)}
-                      aria-label={`Share ayah ${a.n} as an image`}
+                      aria-label={t.shareAyah(a.n)}
                       style={{ display: "flex", alignItems: "center", gap: 5, color: "#8C7355", fontSize: 10.5, fontWeight: 700 }}
                     >
-                      <ImageDown size={12} /> Share
+                      <ImageDown size={12} /> {t.share}
                     </button>
                     <button
                       onClick={() => markHere(openSurah, a.n)}
-                      aria-label={`Stop at ayah ${a.n}`}
+                      aria-label={t.markTo(a.n)}
                       style={{ display: "flex", alignItems: "center", gap: 5, color: isMine ? HIS_COLOR : "#8C7355", fontSize: 10.5, fontWeight: 700 }}
                     >
-                      <BookmarkCheck size={12} /> {isMine ? "You're here" : "Read to here"}
+                      <BookmarkCheck size={12} /> {isMine ? t.youAreHere : t.readToHere}
                     </button>
                   </div>
                 </div>
@@ -306,7 +332,7 @@ export default function QuranGame({ isOwner }) {
         </div>
 
         <AnimatePresence>
-          {shareVerse && <SharePreview verse={shareVerse} onClose={() => setShareVerse(null)} />}
+          {shareVerse && <SharePreview verse={shareVerse} labels={t} onClose={() => setShareVerse(null)} />}
         </AnimatePresence>
 
         {ayahs && ayahs.length > 0 && (
@@ -327,7 +353,7 @@ export default function QuranGame({ isOwner }) {
               className="flex items-center justify-center gap-2 mb-3"
             >
               <BookmarkCheck size={15} />
-              {readHere >= s.ayahs ? `${s.en} read — tap to undo` : `Mark all ${s.ayahs} ayahs read`}
+              {readHere >= s.ayahs ? t.undoRead(s.en) : t.markAll(s.ayahs)}
             </motion.button>
 
             <motion.button
@@ -344,7 +370,7 @@ export default function QuranGame({ isOwner }) {
               }}
               className="flex items-center justify-center gap-2"
             >
-              <List size={15} /> All surahs
+              <List size={15} /> {t.allSurahs}
             </motion.button>
           </div>
         )}
@@ -380,7 +406,7 @@ export default function QuranGame({ isOwner }) {
         ))}
       </div>
       <div className="flex items-center gap-4 mb-4" style={{ fontSize: 10.5 }}>
-        <span style={{ color: HIS_COLOR }}>You {myTotal}</span>
+        <span style={{ color: HIS_COLOR }}>{t.you} {myTotal}</span>
         <span style={{ color: HER_COLOR }}>{isOwner ? "Ganira" : "Javanshir"} {theirTotal}</span>
       </div>
 
@@ -408,7 +434,7 @@ export default function QuranGame({ isOwner }) {
           onClick={() => pickOrder(order === "mushaf" ? "revelation" : "mushaf")}
           style={{ fontSize: 10.5, fontWeight: 700, padding: "5px 11px", borderRadius: 9999, border: `1px solid ${TOKENS.line}`, color: TOKENS.muted }}
         >
-          {order === "mushaf" ? "In order" : "As revealed"}
+          {order === "mushaf" ? t.inOrder : t.asRevealed}
         </button>
       </div>
 
@@ -419,7 +445,7 @@ export default function QuranGame({ isOwner }) {
           style={{ background: TOKENS.gold, color: TOKENS.bgDeep, fontWeight: 700 }}
           className="w-full h-11 rounded-full flex items-center justify-center gap-2 mb-5"
         >
-          Continue from {surahOf(mine.surah).en} {mine.surah}:{mine.ayah}
+          {t.continueFrom(surahOf(mine.surah).en, mine.surah, mine.ayah)}
         </motion.button>
       )}
 

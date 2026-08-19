@@ -19,7 +19,15 @@ function storedTheme() {
  * Shows the card before it goes anywhere, so the style can be chosen and the
  * result checked rather than discovered in the share sheet.
  */
-export default function SharePreview({ verse, onClose }) {
+// `labels` lets a screen with its own language (the reader) pass its strings in.
+// The jar has no language toggle, so it passes nothing and gets English.
+const DEFAULTS = {
+  preview: "PREVIEW", sendIt: "Share this", rendering: "Rendering…",
+  saved: "Saved", sent: "Shared", preparing: "Preparing…",
+};
+
+export default function SharePreview({ verse, labels, onClose }) {
+  const t = { ...DEFAULTS, ...(labels || {}) };
   const [theme, setTheme] = useState(storedTheme);
   const [preview, setPreview] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -93,7 +101,7 @@ export default function SharePreview({ verse, onClose }) {
         style={{ width: "100%", maxWidth: 360, display: "flex", flexDirection: "column", alignItems: "center" }}
       >
         <div className="w-full flex items-center justify-between mb-3">
-          <span style={{ color: TOKENS.muted, fontSize: 11.5, fontWeight: 700, letterSpacing: 1.2 }}>PREVIEW</span>
+          <span style={{ color: TOKENS.muted, fontSize: 11.5, fontWeight: 700, letterSpacing: 1.2 }}>{t.preview}</span>
           <button onClick={onClose} aria-label="Close preview" style={{ color: TOKENS.muted, padding: 4 }}>
             <X size={17} />
           </button>
@@ -125,25 +133,25 @@ export default function SharePreview({ verse, onClose }) {
                 style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
               />
             ) : (
-              <span style={{ color: TOKENS.muted, fontSize: 12 }}>Rendering…</span>
+              <span style={{ color: TOKENS.muted, fontSize: 12 }}>{t.rendering}</span>
             )}
           </AnimatePresence>
         </div>
 
         <div className="flex items-center justify-center gap-2 mt-4 mb-4 flex-wrap">
-          {THEMES.map((t) => (
+          {THEMES.map((opt) => (
             <button
-              key={t.id}
-              onClick={() => pick(t.id)}
-              aria-label={`${t.label} style`}
+              key={opt.id}
+              onClick={() => pick(opt.id)}
+              aria-label={`${opt.label} style`}
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
                 padding: "6px 12px",
                 borderRadius: 9999,
-                border: `1px solid ${theme === t.id ? TOKENS.gold : TOKENS.line}`,
-                color: theme === t.id ? TOKENS.gold : TOKENS.muted,
+                border: `1px solid ${theme === opt.id ? TOKENS.gold : TOKENS.line}`,
+                color: theme === opt.id ? TOKENS.gold : TOKENS.muted,
                 fontSize: 11,
                 fontWeight: 700,
               }}
@@ -153,11 +161,11 @@ export default function SharePreview({ verse, onClose }) {
                   width: 12,
                   height: 12,
                   borderRadius: 4,
-                  background: `linear-gradient(140deg, ${t.top}, ${t.bottom})`,
-                  border: `1px solid ${t.frame}`,
+                  background: `linear-gradient(140deg, ${opt.top}, ${opt.bottom})`,
+                  border: `1px solid ${opt.frame}`,
                 }}
               />
-              {t.label}
+              {opt.label}
             </button>
           ))}
         </div>
@@ -170,7 +178,7 @@ export default function SharePreview({ verse, onClose }) {
           className="w-full h-12 rounded-full flex items-center justify-center gap-2"
         >
           {done ? <Check size={16} /> : navigator.canShare ? <Share2 size={16} /> : <Download size={16} />}
-          {busy ? "Preparing…" : done === "downloaded" ? "Saved" : done === "shared" ? "Shared" : "Share this"}
+          {busy ? t.preparing : done === "downloaded" ? t.saved : done === "shared" ? t.sent : t.sendIt}
         </motion.button>
       </motion.div>
     </motion.div>
