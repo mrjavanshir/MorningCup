@@ -1,13 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, Pause, Play, Share2, X } from "lucide-react";
+import { Check, Pause, Play, Share2, Star, X } from "lucide-react";
 import { TOKENS, VERSE_JAR } from "./messages.js";
+import { createCollection, readCollection, storeConfigured, updateCollection } from "./store.js";
 
 const PAPER = "#F6EEDE";
 const JAR_W = 300;
 const JAR_H = 380;
 const COLS = 10;
 const READ_KEY = "verse-jar-read";
+const KEPT_KEY = "verse-jar-kept";
+const COLLECTION_KEY = "verse-jar-collection";
 const RECITER = "Alafasy_128kbps";
 
 // everyayah.com names each file by zero-padded surah + ayah, so a verse that
@@ -35,6 +38,39 @@ function saveRead(read) {
   } catch {
     /* private mode / storage full */
   }
+}
+
+function loadIds(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    const ids = raw ? JSON.parse(raw) : [];
+    return Array.isArray(ids) ? Object.fromEntries(ids.map((id) => [id, true])) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveIds(key, map) {
+  try {
+    localStorage.setItem(key, JSON.stringify(Object.keys(map)));
+  } catch {
+    /* private mode / storage full */
+  }
+}
+
+function loadCollection() {
+  try {
+    const raw = localStorage.getItem(COLLECTION_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && parsed.id && parsed.key ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function readSharedCollectionId() {
+  const id = new URLSearchParams(window.location.search).get("kept");
+  return id && /^[a-z0-9]{10}$/.test(id) ? id : null;
 }
 
 // Same calendar day gives the same verse to whoever opens it, so two people
@@ -197,15 +233,173 @@ function GlassDressing() {
   );
 }
 
+function KeptList({ ids, title, subtitle, onBack, onShare, shareLabel }) {
+  const verses = ids.map((id) => ALL_PAPERS.find((p) => p.id === id)).filter(Boolean);
+  return (
+    <div className="w-full flex flex-col items-center">
+      <p style={{ color: TOKENS.muted, fontSize: 13, textAlign: "center" }} className="mb-1">
+        {title}
+      </p>
+      <p style={{ color: TOKENS.muted, fontSize: 11.5, textAlign: "center" }} className="mb-5">
+        {subtitle}
+      </p>
+
+      {verses.length === 0 ? (
+        <p style={{ color: TOKENS.muted, fontSize: 12.5, textAlign: "center", opacity: 0.8 }} className="mb-6">
+          Nothing kept yet.
+        </p>
+      ) : (
+        <div className="w-full flex flex-col gap-2.5 mb-5">
+          {verses.map((v) => (
+            <motion.div
+              key={v.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ type: "spring", stiffness: 260, damping: 24 }}
+              style={{
+                width: "100%",
+                background: `linear-gradient(180deg, ${PAPER} 0%, #EDE2CC 100%)`,
+                borderTop: `4px solid ${v.color}`,
+                borderRadius: 10,
+                padding: "14px 16px",
+                boxShadow: "0 8px 20px rgba(0,0,0,0.4)",
+              }}
+            >
+              <p
+                dir="rtl"
+                lang="ar"
+                style={{ color: "#2A1620", fontFamily: "'Amiri', serif", fontSize: 17, lineHeight: 1.9, textAlign: "center" }}
+              >
+                {v.arabic}
+              </p>
+              <p style={{ color: "#2A1620", fontFamily: "'Fraunces', serif", fontSize: 13.5, lineHeight: 1.5, textAlign: "center", marginTop: 8 }}>
+                {v.text}
+              </p>
+              <p
+                style={{
+                  color: v.color,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: 1.1,
+                  textTransform: "uppercase",
+                  textAlign: "center",
+                  marginTop: 8,
+                }}
+              >
+                {v.ref}
+              </p>
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex items-center gap-3">
+        {onBack && (
+          <button onClick={onBack} style={{ color: TOKENS.muted, fontSize: 12.5 }} className="flex items-center gap-1.5">
+            <X size={13} /> Back to the jar
+          </button>
+        )}
+        {onShare && verses.length > 0 && (
+          <button
+            onClick={onShare}
+            style={{
+              color: TOKENS.gold,
+              fontSize: 11.5,
+              fontWeight: 700,
+              border: `1px solid ${TOKENS.gold}44`,
+              borderRadius: 9999,
+              padding: "6px 15px",
+            }}
+            className="flex items-center gap-1.5"
+          >
+            <Share2 size={12} /> {shareLabel}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function VerseJarGame() {
   const papers = useMemo(layoutPapers, []);
   const [openId, setOpenId] = useState(readSharedId);
   const [read, setRead] = useState(loadRead);
+  const [kept, setKept] = useState(() => loadIds(KEPT_KEY));
   const [shared, setShared] = useState(false);
   const [lid, setLid] = useState(() => (readSharedId() ? "open" : "closed"));
   const [playing, setPlaying] = useState(false);
+  const [showKept, setShowKept] = useState(false);
+  const [collectionShared, setCollectionShared] = useState(false);
   const audioRef = useRef(null);
   const lidOpen = lid === "open";
+
+  // Someone else's collection, opened read-only from a ?kept= link.
+  const [sharedCollectionId] = useState(readSharedCollectionId);
+  const [sharedCollection, setSharedCollection] = useState(null);
+  const [loadingShared, setLoadingShared] = useState(() => readSharedCollectionId() !== null);
+
+  useEffect(() => {
+    if (!sharedCollectionId) return undefined;
+    let cancelled = false;
+    (async () => {
+      const data = await readCollection(sharedCollectionId);
+      if (cancelled) return;
+      setSharedCollection(data);
+      setLoadingShared(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sharedCollectionId]);
+
+  // State is local-first: localStorage is the source of truth on this device,
+  // and the collection is a copy that makes it portable and shareable. A failed
+  // sync therefore costs nothing locally.
+  const syncCollection = async (nextKept, nextRead) => {
+    if (!storeConfigured()) return;
+    const payload = { kept: Object.keys(nextKept), read: Object.keys(nextRead) };
+    const existing = loadCollection();
+    if (existing) {
+      await updateCollection(existing.id, existing.key, payload);
+      return;
+    }
+    const created = await createCollection(payload);
+    if (created) {
+      try {
+        localStorage.setItem(COLLECTION_KEY, JSON.stringify(created));
+      } catch {
+        /* private mode */
+      }
+    }
+  };
+
+  const toggleKeep = () => {
+    setKept((prev) => {
+      const next = { ...prev };
+      if (next[openId]) delete next[openId];
+      else next[openId] = true;
+      saveIds(KEPT_KEY, next);
+      syncCollection(next, read);
+      return next;
+    });
+  };
+
+  const shareCollection = async () => {
+    const existing = loadCollection();
+    if (!existing) return;
+    const url = `${window.location.origin}${import.meta.env.BASE_URL}games/jar?kept=${existing.id}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "Verses I've kept", url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      setCollectionShared(true);
+      setTimeout(() => setCollectionShared(false), 1900);
+    } catch {
+      /* dismissed or unavailable */
+    }
+  };
 
   const open = openId ? papers.find((p) => p.id === openId) : null;
   const readCount = Object.keys(read).length;
@@ -266,6 +460,7 @@ export default function VerseJarGame() {
     setRead((prev) => {
       const next = { ...prev, [openId]: true };
       saveRead(next);
+      syncCollection(kept, next);
       return next;
     });
     setShared(false);
@@ -287,6 +482,49 @@ export default function VerseJarGame() {
       /* dismissed or unavailable */
     }
   };
+
+  // Opened from a ?kept= link: someone else's collection, read-only.
+  if (sharedCollectionId) {
+    if (loadingShared) {
+      return (
+        <p style={{ color: TOKENS.muted, fontSize: 13, textAlign: "center" }} className="mt-6">
+          Opening…
+        </p>
+      );
+    }
+    if (!sharedCollection) {
+      return (
+        <div className="w-full flex flex-col items-center mt-6">
+          <p style={{ color: TOKENS.cream, fontFamily: "'Fraunces', serif", fontSize: 17, textAlign: "center" }} className="mb-2">
+            Nothing here.
+          </p>
+          <p style={{ color: TOKENS.muted, fontSize: 12.5, textAlign: "center" }}>
+            This collection has expired or the link is wrong.
+          </p>
+        </div>
+      );
+    }
+    return (
+      <KeptList
+        ids={sharedCollection.kept || []}
+        title="Verses she kept"
+        subtitle={`${(sharedCollection.kept || []).length} of ${ALL_PAPERS.length}`}
+      />
+    );
+  }
+
+  if (showKept) {
+    return (
+      <KeptList
+        ids={Object.keys(kept)}
+        title="Verses you've kept"
+        subtitle={`${Object.keys(kept).length} of ${ALL_PAPERS.length}`}
+        onBack={() => setShowKept(false)}
+        onShare={storeConfigured() && loadCollection() ? shareCollection : null}
+        shareLabel={collectionShared ? "Link copied" : "Share these"}
+      />
+    );
+  }
 
   return (
     <div className="w-full flex flex-col items-center" style={{ minHeight: 680 }}>
@@ -607,7 +845,26 @@ export default function VerseJarGame() {
                   >
                     {open.ref}
                   </p>
-                  <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 16 }}>
+                  <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
+                    <button
+                      onClick={toggleKeep}
+                      aria-label={kept[open.id] ? "Remove from kept verses" : "Keep this verse"}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 7,
+                        background: kept[open.id] ? open.color : "transparent",
+                        border: `1px solid ${open.color}${kept[open.id] ? "" : "55"}`,
+                        color: kept[open.id] ? PAPER : open.color,
+                        borderRadius: 9999,
+                        padding: "7px 16px",
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      <Star size={13} fill={kept[open.id] ? PAPER : "none"} /> {kept[open.id] ? "Kept" : "Keep"}
+                    </button>
                     <button
                       onClick={toggleAudio}
                       aria-label={playing ? "Stop recitation" : "Play recitation"}
@@ -681,23 +938,42 @@ export default function VerseJarGame() {
                 ? `${readCount} of ${papers.length} opened`
                 : `${papers.length} papers in the jar`}
           </p>
-          <motion.button
-            onClick={() => {
-              setLid("open");
-              setOpenId(verseOfTheDayId());
-            }}
-            whileTap={{ scale: 0.97 }}
-            style={{
-              color: TOKENS.gold,
-              fontSize: 11.5,
-              fontWeight: 700,
-              border: `1px solid ${TOKENS.gold}44`,
-              borderRadius: 9999,
-              padding: "6px 15px",
-            }}
-          >
-            Today's verse
-          </motion.button>
+          <div className="flex items-center gap-2">
+            <motion.button
+              onClick={() => {
+                setLid("open");
+                setOpenId(verseOfTheDayId());
+              }}
+              whileTap={{ scale: 0.97 }}
+              style={{
+                color: TOKENS.gold,
+                fontSize: 11.5,
+                fontWeight: 700,
+                border: `1px solid ${TOKENS.gold}44`,
+                borderRadius: 9999,
+                padding: "6px 15px",
+              }}
+            >
+              Today's verse
+            </motion.button>
+            {Object.keys(kept).length > 0 && (
+              <motion.button
+                onClick={() => setShowKept(true)}
+                whileTap={{ scale: 0.97 }}
+                style={{
+                  color: TOKENS.gold,
+                  fontSize: 11.5,
+                  fontWeight: 700,
+                  border: `1px solid ${TOKENS.gold}44`,
+                  borderRadius: 9999,
+                  padding: "6px 15px",
+                }}
+                className="flex items-center gap-1.5"
+              >
+                <Star size={12} /> Kept ({Object.keys(kept).length})
+              </motion.button>
+            )}
+          </div>
           <p style={{ color: TOKENS.muted, fontSize: 10.5, textAlign: "center", opacity: 0.8 }}>
             the same one for whoever opens it today
           </p>

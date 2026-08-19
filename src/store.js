@@ -51,6 +51,51 @@ export async function saveState(value) {
 }
 
 /**
+ * Collections are the mutable counterpart to saveState: they can be written
+ * again later. Creating one returns a write key that must be kept locally —
+ * sharing a collection means passing on the id alone, which is read-only.
+ */
+export async function createCollection(data) {
+  if (!STORE_URL) return null;
+  try {
+    const res = await fetch(`${STORE_URL}/c`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) return null;
+    const { id, key } = await res.json();
+    return id && key ? { id, key } : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function readCollection(id) {
+  if (!STORE_URL) return null;
+  try {
+    const res = await fetch(`${STORE_URL}/c/${encodeURIComponent(id)}`);
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function updateCollection(id, key, data) {
+  if (!STORE_URL) return false;
+  try {
+    const res = await fetch(`${STORE_URL}/c/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "X-Write-Key": key },
+      body: JSON.stringify(data),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Read state back out of the current URL. Resolves to null when there is
  * nothing to load, and to { data, param, value } when there is — the param and
  * value are handed back so a reply link can point at the same stored payload
