@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { Check, ImageDown, Pause, Play, Share2, Star, X } from "lucide-react";
 import { TOKENS, VERSE_JAR } from "./messages.js";
 import { createCollection, readCollection, storeConfigured, updateCollection } from "./store.js";
-import { shareVerseCard } from "./verseImage.js";
+import SharePreview from "./SharePreview.jsx";
 
 const PAPER = "#F6EEDE";
 const JAR_W = 300;
@@ -367,7 +367,7 @@ export default function VerseJarGame() {
   const [kept, setKept] = useState(() => loadIds(KEPT_KEY));
   const [notes, setNotes] = useState(loadNotes);
   const [noteDraft, setNoteDraft] = useState(null); // null = not editing
-  const [imageState, setImageState] = useState("idle"); // idle | working | saved
+  const [shareVerse, setShareVerse] = useState(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [shared, setShared] = useState(false);
   const [lid, setLid] = useState(() => (readSharedId() ? "open" : "closed"));
@@ -440,17 +440,8 @@ export default function VerseJarGame() {
     });
   };
 
-  const shareImage = async () => {
-    if (imageState === "working") return;
-    setImageState("working");
-    try {
-      const result = await shareVerseCard(open);
-      setImageState(result === "downloaded" ? "saved" : "idle");
-    } catch {
-      setImageState("idle");
-    }
-    setTimeout(() => setImageState("idle"), 2200);
-  };
+  const shareImage = () =>
+    setShareVerse({ arabic: open.arabic, text: open.text, ref: open.ref, label: open.label });
 
   // Wipes this device's jar state. The collection is abandoned rather than
   // deleted — the Worker has no delete route, and it expires on its own.
@@ -1018,11 +1009,9 @@ export default function VerseJarGame() {
                         fontSize: 11.5,
                         fontWeight: 700,
                         cursor: "pointer",
-                        opacity: imageState === "working" ? 0.6 : 1,
                       }}
                     >
-                      {imageState === "saved" ? <Check size={13} /> : <ImageDown size={13} />}{" "}
-                      {imageState === "working" ? "…" : imageState === "saved" ? "Saved" : "Image"}
+                      <ImageDown size={13} /> Image
                     </button>
                   </div>
                   {kept[open.id] && (
@@ -1101,6 +1090,10 @@ export default function VerseJarGame() {
           )}
         </AnimatePresence>
       </div>
+
+      <AnimatePresence>
+        {shareVerse && <SharePreview verse={shareVerse} onClose={() => setShareVerse(null)} />}
+      </AnimatePresence>
 
       {open ? null : (
         <div className="flex flex-col items-center gap-2.5">

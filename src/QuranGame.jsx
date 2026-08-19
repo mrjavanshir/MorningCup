@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { BookmarkCheck, ChevronLeft, ChevronRight, ImageDown, List, Pause, Play } from "lucide-react";
 import { TOKENS } from "./messages.js";
 import { SURAHS, TOTAL_AYAHS } from "./surahs.js";
 import { cachedDoc, docsAvailable, readDoc, updateDoc } from "./doc.js";
-import { shareVerseCard } from "./verseImage.js";
+import SharePreview from "./SharePreview.jsx";
 
 const DOC = "reading";
 const HIM = "j";
@@ -68,7 +68,7 @@ export default function QuranGame({ isOwner }) {
   const [lang, setLang] = useState(() => stored(LANG_KEY, "en.sahih"));
   const [order, setOrder] = useState(() => stored(ORDER_KEY, "mushaf"));
   const [playing, setPlaying] = useState(null);
-  const [sharing, setSharing] = useState(null);
+  const [shareVerse, setShareVerse] = useState(null);
   const audioRef = useRef(null);
 
   const marks = doc.marks || {};
@@ -168,22 +168,14 @@ export default function QuranGame({ isOwner }) {
 
   const markHere = (surah, ayah) => setProgress(surah, ayah);
 
-  const shareAyah = async (a) => {
-    if (sharing !== null) return;
+  const shareAyah = (a) => {
     const s = surahOf(openSurah);
-    setSharing(a.n);
-    try {
-      await shareVerseCard({
-        arabic: a.ar,
-        text: a.tr,
-        ref: `${s.en} ${openSurah}:${a.n}`,
-        label: s.meaning,
-        color: TOKENS.gold,
-      });
-    } catch {
-      /* rendering or sharing failed; nothing to recover */
-    }
-    setSharing(null);
+    setShareVerse({
+      arabic: a.ar,
+      text: a.tr,
+      ref: `${s.en} ${openSurah}:${a.n}`,
+      label: s.meaning,
+    });
   };
 
   const listed = order === "revelation" ? [...SURAHS].sort((a, b) => a.order - b.order) : SURAHS;
@@ -276,9 +268,9 @@ export default function QuranGame({ isOwner }) {
                     <button
                       onClick={() => shareAyah(a)}
                       aria-label={`Share ayah ${a.n} as an image`}
-                      style={{ display: "flex", alignItems: "center", gap: 5, color: "#8C7355", fontSize: 10.5, fontWeight: 700, opacity: sharing === a.n ? 0.5 : 1 }}
+                      style={{ display: "flex", alignItems: "center", gap: 5, color: "#8C7355", fontSize: 10.5, fontWeight: 700 }}
                     >
-                      <ImageDown size={12} /> {sharing === a.n ? "…" : "Share"}
+                      <ImageDown size={12} /> Share
                     </button>
                     <button
                       onClick={() => markHere(openSurah, a.n)}
@@ -293,6 +285,10 @@ export default function QuranGame({ isOwner }) {
             );
           })}
         </div>
+
+        <AnimatePresence>
+          {shareVerse && <SharePreview verse={shareVerse} onClose={() => setShareVerse(null)} />}
+        </AnimatePresence>
 
         {ayahs && ayahs.length > 0 && (
           <div className="w-full flex flex-col items-center mt-5">
