@@ -14,7 +14,7 @@ import NamesGame from "./NamesGame.jsx";
 import SharedSettings from "./SharedSettings.jsx";
 import KhatmGame from "./KhatmGame.jsx";
 import QuranGame from "./QuranGame.jsx";
-import { cachedConfig, fetchSharedConfig, ME, readSession, signOut, unlockAdmin } from "./owner.js";
+import { cachedViews, fetchViews, ME, readAsUser, readSession, setAsUser, signOut, unlockAdmin } from "./owner.js";
 import { applyTheme, currentTheme } from "./theme.js";
 
 // `shared` controls only what the hub LISTS. Every game stays reachable at its
@@ -67,15 +67,20 @@ export default function App() {
   const [lockHour] = useState(nightLockHour);
   const [copiedId, setCopiedId] = useState(null);
   const [session, setSession] = useState(readSession);
-  // Previewing is in-memory only. It must never touch identity, or marks made
-  // while previewing would be filed under the other person.
-  const [viewAsUser, setViewAsUser] = useState(false);
+  // Remembered, so an admin can simply use the app as a user day to day rather
+  // than only peeking. It still never touches identity — marks made in the user
+  // view are filed under whoever the device belongs to.
+  const [viewAsUser, setViewAsUserState] = useState(readAsUser);
+  const toggleAsUser = (on) => {
+    setAsUser(on);
+    setViewAsUserState(on);
+  };
   const isAdmin = session.isAdmin;
   const asAdmin = isAdmin && !viewAsUser;
   const [showSettings, setShowSettings] = useState(false);
   // Start from whatever this device last saw so the list does not flicker or
   // sit empty offline, then refresh from the Worker.
-  const [config, setConfig] = useState(cachedConfig);
+  const [views, setViews] = useState(cachedViews);
   const [theme, setTheme] = useState(currentTheme);
 
   // Applied on mount too, not only on change: the stored choice has to reach
@@ -84,22 +89,24 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
-    fetchSharedConfig().then((c) => {
-      if (!cancelled && c) setConfig(c);
+    fetchViews().then((v) => {
+      if (!cancelled && v) setViews(v);
     });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const isShared = (g) => (config && g.id in config ? config[g.id] : g.shared !== false);
+  // Each person has their own list, so previewing shows YOUR user view, not hers.
+  const myView = views ? views[session.identity] : null;
+  const isShared = (g) => (myView && g.id in myView ? myView[g.id] : g.shared !== false);
   const visibleGames = asAdmin ? GAMES : GAMES.filter(isShared);
 
   const handOverDevice = () => {
     signOut();
     setSession({ isAdmin: false, identity: session.identity === ME ? ME : session.identity });
     setSession(readSession());
-    setViewAsUser(false);
+    toggleAsUser(false);
   };
 
   const holdRef = useRef(null);
@@ -169,6 +176,7 @@ export default function App() {
   const activeGame = route.view === "game" ? GAMES.find((g) => g.id === route.id) : null;
   const isNight = !!activeGame?.night;
   const bare = !!activeGame?.bare;
+  const myName = session.identity === ME ? "Javanshir" : "Ganira";
   const locked = route.view === "game" && lockHour !== null;
 
   return (
@@ -247,7 +255,7 @@ export default function App() {
           }}
           className="mb-1"
         >
-          {isNight ? "Good Night, Ganira" : "Hello, Ganira"}
+          {isNight ? `Good Night, ${myName}` : `Hello, ${myName}`}
         </h1>
         <p style={{ color: TOKENS.muted, fontSize: 13.5, textAlign: "center" }} className="mb-8">
           {isNight ? "something small before you sleep." : "a little something, whenever you need it."}
@@ -320,7 +328,7 @@ export default function App() {
             </p>
           </div>
         ) : showSettings && isAdmin ? (
-          <SharedSettings games={GAMES} onBack={() => setShowSettings(false)} />
+          <SharedSettings games={GAMES} onBack={() => setShowSettings(false)} onSaved={setViews} />
         ) : route.view === "hub" ? (
           <>
             {asAdmin && (
@@ -419,7 +427,7 @@ export default function App() {
                     </button>
                   )}
                   <button
-                    onClick={() => setViewAsUser((v) => !v)}
+                    onClick={() => toggleAsUser(!viewAsUser)}
                     style={{ color: TOKENS.muted, fontSize: 10.5, opacity: 0.8 }}
                   >
                     {viewAsUser ? "back to admin" : "view as user"}

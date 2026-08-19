@@ -2,20 +2,35 @@ import React, { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { Check, Eye, EyeOff, Loader } from "lucide-react";
 import { TOKENS, alpha } from "./messages.js";
-import { fetchSharedConfig, saveSharedConfig } from "./owner.js";
+import { fetchViews, ME, saveViews, THEM } from "./owner.js";
 import { storeConfigured } from "./store.js";
 
-export default function SharedSettings({ games, onBack }) {
-  const [visible, setVisible] = useState(() => Object.fromEntries(games.map((g) => [g.id, g.shared !== false])));
+const PEOPLE = [
+  { id: THEM, label: "Ganira" },
+  { id: ME, label: "You" },
+];
+
+export default function SharedSettings({ games, onBack, onSaved }) {
+  const [who, setWho] = useState(THEM);
+  const blank = () => Object.fromEntries(games.map((g) => [g.id, g.shared !== false]));
+  const [views, setViews] = useState(() => ({ [ME]: blank(), [THEM]: blank() }));
+  const visible = views[who];
   const [status, setStatus] = useState("loading"); // loading | ready | saving | saved | failed
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const config = await fetchSharedConfig();
+      const stored = await fetchViews();
       if (cancelled) return;
-      if (config) {
-        setVisible((prev) => Object.fromEntries(games.map((g) => [g.id, config[g.id] ?? prev[g.id]])));
+      if (stored) {
+        setViews((prev) =>
+          Object.fromEntries(
+            PEOPLE.map(({ id }) => [
+              id,
+              Object.fromEntries(games.map((g) => [g.id, stored[id]?.[g.id] ?? prev[id][g.id]])),
+            ])
+          )
+        );
       }
       setStatus("ready");
     })();
@@ -24,11 +39,12 @@ export default function SharedSettings({ games, onBack }) {
     };
   }, [games]);
 
-  const toggle = (id) => setVisible((prev) => ({ ...prev, [id]: !prev[id] }));
+  const toggle = (id) => setViews((prev) => ({ ...prev, [who]: { ...prev[who], [id]: !prev[who][id] } }));
 
   const save = async () => {
     setStatus("saving");
-    const ok = await saveSharedConfig(visible);
+    const ok = await saveViews(views);
+    if (ok && onSaved) onSaved(views);
     setStatus(ok ? "saved" : "failed");
     if (ok) setTimeout(() => setStatus("ready"), 2200);
   };
@@ -54,11 +70,31 @@ export default function SharedSettings({ games, onBack }) {
 
   return (
     <div className="w-full flex flex-col items-center">
-      <p style={{ color: TOKENS.muted, fontSize: 13, textAlign: "center" }} className="mb-1">
-        What Ganira sees
+      <p style={{ color: TOKENS.muted, fontSize: 13, textAlign: "center" }} className="mb-3">
+        Who sees what
       </p>
+
+      {/* One list per person — the admin sets both. */}
+      <div className="flex items-center gap-2 mb-3">
+        {PEOPLE.map((person) => (
+          <button
+            key={person.id}
+            onClick={() => setWho(person.id)}
+            style={{
+              fontSize: 11.5,
+              fontWeight: 700,
+              padding: "6px 14px",
+              borderRadius: 9999,
+              border: `1px solid ${who === person.id ? TOKENS.gold : TOKENS.line}`,
+              color: who === person.id ? TOKENS.gold : TOKENS.muted,
+            }}
+          >
+            {person.label}
+          </button>
+        ))}
+      </div>
       <p style={{ color: TOKENS.muted, fontSize: 11.5, textAlign: "center" }} className="mb-5">
-        {status === "loading" ? "Loading…" : `${shownCount} of ${games.length} listed on her hub`}
+        {status === "loading" ? "Loading…" : `${shownCount} of ${games.length} on ${who === ME ? "your" : "her"} hub`}
       </p>
 
       <div className="w-full flex flex-col gap-2 mb-5">
@@ -70,7 +106,7 @@ export default function SharedSettings({ games, onBack }) {
               key={g.id}
               onClick={() => toggle(g.id)}
               whileTap={{ scale: 0.985 }}
-              aria-label={`${on ? "Hide" : "Show"} ${g.title}`}
+              aria-label={`${on ? "Hide" : "Show"} ${g.title} for ${who === ME ? "you" : "Ganira"}`}
               style={{
                 width: "100%",
                 background: `linear-gradient(160deg, ${TOKENS.bgCard}, ${TOKENS.bgCardEdge})`,
@@ -106,7 +142,7 @@ export default function SharedSettings({ games, onBack }) {
       </div>
 
       <p style={{ color: TOKENS.muted, fontSize: 10.5, textAlign: "center", opacity: 0.75 }} className="mb-4">
-        Hiding one only removes it from her list — a link you already sent still opens it.
+        Hiding one only removes it from that list — a link already sent still opens it.
       </p>
 
       <motion.button
@@ -126,7 +162,7 @@ export default function SharedSettings({ games, onBack }) {
         {status === "saving"
           ? "Saving…"
           : status === "saved"
-            ? "Saved — her hub will update"
+            ? "Saved — both hubs updated"
             : status === "failed"
               ? "Couldn't save, tap to retry"
               : "Save"}

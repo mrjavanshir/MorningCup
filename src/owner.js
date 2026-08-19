@@ -30,6 +30,25 @@ const ADMIN_FLAG = "is-admin";
 const IDENTITY_KEY = "identity";
 const LEGACY_FLAG = "is-owner";
 const CONFIG_CACHE = "shared-config";
+const AS_USER_KEY = "view-as-user";
+
+/** Admins can sit in the user view for as long as they like, not just peek. */
+export function readAsUser() {
+  try {
+    return localStorage.getItem(AS_USER_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function setAsUser(on) {
+  try {
+    if (on) localStorage.setItem(AS_USER_KEY, "1");
+    else localStorage.removeItem(AS_USER_KEY);
+  } catch {
+    /* private mode */
+  }
+}
 
 /** Devices unlocked before roles existed carried one flag meaning both. */
 function migrateLegacy() {
@@ -96,8 +115,8 @@ export function signOut() {
   }
 }
 
-/** Last config this device saw, so the hub still filters correctly offline. */
-export function cachedConfig() {
+/** Last views this device saw, so the hub still filters correctly offline. */
+export function cachedViews() {
   try {
     const raw = localStorage.getItem(CONFIG_CACHE);
     const parsed = raw ? JSON.parse(raw) : null;
@@ -116,32 +135,46 @@ function cache(config) {
 }
 
 /**
- * Resolves to a map of { gameId: boolean }, or null when there is nothing to
- * go on — callers then fall back to the `shared` flags compiled into GAMES.
+ * Resolves to { j: {gameId: bool}, g: {gameId: bool} } — one list per person,
+ * so each of them can be given a different set. Null when there is nothing to
+ * go on; callers then fall back to the `shared` flags compiled into GAMES.
  */
-export async function fetchSharedConfig() {
+export async function fetchViews() {
   if (!STORE_URL) return null;
   try {
     const res = await fetch(`${STORE_URL}/config`);
     if (!res.ok) return null;
     const data = await res.json();
-    if (!data || typeof data !== "object" || !data.games) return null;
-    cache(data.games);
-    return data.games;
+    const views = normaliseViews(data);
+    if (!views) return null;
+    cache(views);
+    return views;
   } catch {
     return null;
   }
 }
 
-export async function saveSharedConfig(games) {
+/**
+ * Accepts the old single-list shape as well. That config only ever described
+ * her view, so it becomes hers and his is left unset (meaning: show him
+ * everything the code marks shared).
+ */
+function normaliseViews(data) {
+  if (!data || typeof data !== "object") return null;
+  if (data.views && typeof data.views === "object") return { [ME]: data.views[ME] || {}, [THEM]: data.views[THEM] || {} };
+  if (data.games && typeof data.games === "object") return { [ME]: {}, [THEM]: data.games };
+  return null;
+}
+
+export async function saveViews(views) {
   if (!STORE_URL) return false;
   try {
     const res = await fetch(`${STORE_URL}/config`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "X-Write-Key": OWNER_KEY },
-      body: JSON.stringify({ games, updated: new Date().toISOString() }),
+      body: JSON.stringify({ views, updated: new Date().toISOString() }),
     });
-    if (res.ok) cache(games);
+    if (res.ok) cache(views);
     return res.ok;
   } catch {
     return false;
