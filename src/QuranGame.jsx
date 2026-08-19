@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { BookmarkCheck, ChevronLeft, ChevronRight, Pause, Play, X } from "lucide-react";
+import { BookmarkCheck, ChevronLeft, ChevronRight, List, Pause, Play } from "lucide-react";
 import { TOKENS } from "./messages.js";
 import { SURAHS, TOTAL_AYAHS } from "./surahs.js";
 import { cachedDoc, docsAvailable, readDoc, updateDoc } from "./doc.js";
@@ -212,7 +212,7 @@ export default function QuranGame({ isOwner }) {
           }}
           className="flex items-center justify-center gap-2 mb-4"
         >
-          <X size={14} /> All surahs
+          <List size={14} /> All surahs
         </motion.button>
 
         {loadState === "loading" && <p style={{ color: TOKENS.muted, fontSize: 12.5 }} className="mt-4">Loading…</p>}
@@ -302,7 +302,7 @@ export default function QuranGame({ isOwner }) {
               }}
               className="flex items-center justify-center gap-2"
             >
-              <X size={15} /> All surahs
+              <List size={15} /> All surahs
             </motion.button>
           </div>
         )}
