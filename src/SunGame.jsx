@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { SUN_MESSAGES, TOKENS } from "./messages.js";
+import { SUN_MESSAGES, TOKENS, alpha } from "./messages.js";
 import NoteResult from "./NoteResult.jsx";
 
 const STEPS = 5;
@@ -56,7 +56,7 @@ export default function SunGame() {
             height: 160,
             transform: "translate(-50%, 50%)",
             borderRadius: "50%",
-            background: `radial-gradient(circle, ${TOKENS.glow}55 0%, transparent 70%)`,
+            background: `radial-gradient(circle, ${alpha(TOKENS.glow, "55")} 0%, transparent 70%)`,
             transition: "bottom 0.35s cubic-bezier(.4,1.2,.5,1)",
             pointerEvents: "none",
           }}
@@ -71,7 +71,7 @@ export default function SunGame() {
             transform: "translate(-50%, 50%)",
             borderRadius: "50%",
             background: `linear-gradient(180deg, #F2C878, ${TOKENS.gold})`,
-            boxShadow: `0 0 30px ${TOKENS.glow}66`,
+            boxShadow: `0 0 30px ${alpha(TOKENS.glow, "66")}`,
             transition: "bottom 0.35s cubic-bezier(.4,1.2,.5,1)",
           }}
         />

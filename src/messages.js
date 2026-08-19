@@ -1,13 +1,24 @@
+// The palette resolves through CSS variables (see index.css) so switching
+// theme is one attribute on <html> — no re-render, and it still works in the
+// module-scope constants that several games build from these.
 export const TOKENS = {
-  bgDeep: "#170D11",
-  bgCard: "#2A1620",
-  bgCardEdge: "#3A1E2B",
-  cream: "#F3E7DA",
-  muted: "#B99A8E",
-  line: "rgba(243,231,218,0.14)",
-  gold: "#D8A857",
-  glow: "#F2B860",
+  bgDeep: "var(--bg-deep)",
+  bgCard: "var(--bg-card)",
+  bgCardEdge: "var(--bg-card-edge)",
+  cream: "var(--cream)",
+  muted: "var(--muted)",
+  line: "var(--line)",
+  gold: "var(--gold)",
+  glow: "var(--glow)",
 };
+
+/**
+ * Fades a token. The palette used to be plain hex, so a translucent shade was
+ * written by appending hex alpha (`${TOKENS.gold}55`); that cannot work on a
+ * var(), hence this. Takes the same 00-ff value the old suffixes used.
+ */
+export const alpha = (color, hex) =>
+  `color-mix(in srgb, ${color} ${Math.round((parseInt(hex, 16) / 255) * 100)}%, transparent)`;
 
 export const SUN_MESSAGES = [
   { cat: "Today", text: "Skies are clear — hoping your morning opens up just as easily, Ganira))" },

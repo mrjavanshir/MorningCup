@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Gift, RefreshCw } from "lucide-react";
-import { TOKENS, SURPRISES } from "./messages.js";
+import { TOKENS, SURPRISES, alpha } from "./messages.js";
 
 const SPARKS = Array.from({ length: 10 }, (_, i) => {
   const angle = (i / 10) * Math.PI * 2;
@@ -76,8 +76,8 @@ export default function SurpriseBoxGame() {
                 height: 126,
                 borderRadius: 22,
                 background: `linear-gradient(150deg, ${TOKENS.bgCard}, ${TOKENS.bgCardEdge})`,
-                border: `1px solid ${TOKENS.gold}66`,
-                boxShadow: `0 14px 30px rgba(0,0,0,0.45), inset 0 0 24px ${TOKENS.gold}18`,
+                border: `1px solid ${alpha(TOKENS.gold, "66")}`,
+                boxShadow: `0 14px 30px rgba(0,0,0,0.45), inset 0 0 24px ${alpha(TOKENS.gold, "18")}`,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -102,7 +102,7 @@ export default function SurpriseBoxGame() {
                 height: 7,
                 borderRadius: 9999,
                 background: TOKENS.glow,
-                boxShadow: `0 0 10px 2px ${TOKENS.glow}88`,
+                boxShadow: `0 0 10px 2px ${alpha(TOKENS.glow, "88")}`,
                 pointerEvents: "none",
               }}
             />
@@ -117,7 +117,7 @@ export default function SurpriseBoxGame() {
               transition={{ type: "spring", stiffness: 260, damping: 20 }}
               style={{
                 background: `linear-gradient(160deg, ${TOKENS.bgCard}, ${TOKENS.bgCardEdge})`,
-                border: `1px solid ${TOKENS.gold}55`,
+                border: `1px solid ${alpha(TOKENS.gold, "55")}`,
                 borderRadius: 16,
                 padding: "20px 22px",
                 width: "100%",

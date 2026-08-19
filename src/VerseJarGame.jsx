@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, ImageDown, Pause, Play, Share2, Star, X } from "lucide-react";
-import { TOKENS, VERSE_JAR } from "./messages.js";
+import { TOKENS, VERSE_JAR, alpha } from "./messages.js";
 import { createCollection, readCollection, storeConfigured, updateCollection } from "./store.js";
 import SharePreview from "./SharePreview.jsx";
 
@@ -346,7 +346,7 @@ function KeptList({ ids, notes = {}, title, subtitle, onBack, onShare, shareLabe
               color: TOKENS.gold,
               fontSize: 11.5,
               fontWeight: 700,
-              border: `1px solid ${TOKENS.gold}44`,
+              border: `1px solid ${alpha(TOKENS.gold, "44")}`,
               borderRadius: 9999,
               padding: "6px 15px",
             }}
@@ -1115,7 +1115,7 @@ export default function VerseJarGame() {
                 color: TOKENS.gold,
                 fontSize: 11.5,
                 fontWeight: 700,
-                border: `1px solid ${TOKENS.gold}44`,
+                border: `1px solid ${alpha(TOKENS.gold, "44")}`,
                 borderRadius: 9999,
                 padding: "6px 15px",
               }}
@@ -1130,7 +1130,7 @@ export default function VerseJarGame() {
                   color: TOKENS.gold,
                   fontSize: 11.5,
                   fontWeight: 700,
-                  border: `1px solid ${TOKENS.gold}44`,
+                  border: `1px solid ${alpha(TOKENS.gold, "44")}`,
                   borderRadius: 9999,
                   padding: "6px 15px",
                 }}

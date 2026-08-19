@@ -1,7 +1,33 @@
 @import "tailwindcss";
 
+/* The palette lives here so a theme swap is one attribute on <html>.
+   TOKENS in messages.js resolves to these, which is why module-scope
+   constants in the games keep working without a re-render. */
 :root {
   color-scheme: dark;
+  --bg-deep: #170d11;
+  --bg-card: #2a1620;
+  --bg-card-edge: #3a1e2b;
+  --cream: #f3e7da;
+  --muted: #b99a8e;
+  --line: rgba(243, 231, 218, 0.14);
+  --gold: #d8a857;
+  --glow: #f2b860;
+}
+
+/* `cream` is the body text everywhere, so in light it has to become the ink —
+   the token names stay, their meaning flips. Gold is darkened because #d8a857
+   on near-white is well under a readable contrast ratio. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg-deep: #f7f1e6;
+  --bg-card: #fffaf2;
+  --bg-card-edge: #f2e7d6;
+  --cream: #2a1620;
+  --muted: #7a6353;
+  --line: rgba(42, 22, 32, 0.16);
+  --gold: #a3742a;
+  --glow: #c8912f;
 }
 
 html,
@@ -12,7 +38,7 @@ body,
 
 body {
   margin: 0;
-  background: #170d11;
+  background: var(--bg-deep);
   font-family: "Manrope", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }

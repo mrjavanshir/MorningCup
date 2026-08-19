@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ChevronLeft, ChevronRight, Grid3x3, Shuffle, X } from "lucide-react";
-import { TOKENS } from "./messages.js";
+import { TOKENS, alpha } from "./messages.js";
 import { NAMES } from "./names.js";
 
 const SEEN_KEY = "names-seen";
@@ -96,7 +96,7 @@ export default function NamesGame() {
               style={{
                 aspectRatio: "1",
                 borderRadius: 10,
-                border: `1px solid ${seen.has(nm.n) ? `${TOKENS.gold}66` : TOKENS.line}`,
+                border: `1px solid ${seen.has(nm.n) ? `${alpha(TOKENS.gold, "66")}` : TOKENS.line}`,
                 background: seen.has(nm.n)
                   ? `linear-gradient(160deg, ${TOKENS.bgCard}, ${TOKENS.bgCardEdge})`
                   : "transparent",
@@ -152,7 +152,7 @@ export default function NamesGame() {
               position: "absolute",
               inset: 0,
               background: `linear-gradient(160deg, ${TOKENS.bgCard}, ${TOKENS.bgCardEdge})`,
-              border: `1px solid ${TOKENS.gold}44`,
+              border: `1px solid ${alpha(TOKENS.gold, "44")}`,
               borderRadius: 20,
               boxShadow: "0 18px 40px rgba(0,0,0,0.45)",
               display: "flex",
@@ -185,14 +185,14 @@ export default function NamesGame() {
                 fontSize: 54,
                 lineHeight: 1.5,
                 textAlign: "center",
-                textShadow: `0 0 26px ${TOKENS.glow}33`,
+                textShadow: `0 0 26px ${alpha(TOKENS.glow, "33")}`,
                 marginBottom: 14,
               }}
             >
               {name.ar}
             </p>
 
-            <div style={{ width: 44, height: 1, background: `${TOKENS.gold}55`, marginBottom: 14 }} />
+            <div style={{ width: 44, height: 1, background: `${alpha(TOKENS.gold, "55")}`, marginBottom: 14 }} />
 
             <p
               style={{

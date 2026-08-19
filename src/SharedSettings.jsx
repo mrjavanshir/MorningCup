@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { Check, Eye, EyeOff, Loader } from "lucide-react";
-import { TOKENS } from "./messages.js";
+import { TOKENS, alpha } from "./messages.js";
 import { fetchSharedConfig, saveSharedConfig } from "./owner.js";
 import { storeConfigured } from "./store.js";
 
@@ -74,7 +74,7 @@ export default function SharedSettings({ games, onBack }) {
               style={{
                 width: "100%",
                 background: `linear-gradient(160deg, ${TOKENS.bgCard}, ${TOKENS.bgCardEdge})`,
-                border: `1px solid ${on ? `${TOKENS.gold}55` : TOKENS.line}`,
+                border: `1px solid ${on ? `${alpha(TOKENS.gold, "55")}` : TOKENS.line}`,
                 borderRadius: 14,
                 padding: "10px 14px",
                 display: "flex",

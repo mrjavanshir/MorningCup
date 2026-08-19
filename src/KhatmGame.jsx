@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { RotateCcw } from "lucide-react";
-import { TOKENS } from "./messages.js";
+import { TOKENS, alpha } from "./messages.js";
 import { cachedDoc, docsAvailable, readDoc, updateDoc } from "./doc.js";
 
 const DOC = "khatm";
@@ -132,8 +132,8 @@ export default function KhatmGame({ isOwner }) {
               style={{
                 aspectRatio: "1",
                 borderRadius: 10,
-                border: `1px solid ${color ? `${color}88` : TOKENS.line}`,
-                background: color ? `${color}22` : "transparent",
+                border: `1px solid ${color ? `${alpha(color, "88")}` : TOKENS.line}`,
+                background: color ? `${alpha(color, "22")}` : "transparent",
                 color: color || TOKENS.muted,
                 fontSize: 13,
                 fontWeight: 700,

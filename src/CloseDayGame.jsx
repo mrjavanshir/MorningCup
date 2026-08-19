@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
 import { Moon, RefreshCw } from "lucide-react";
-import { TOKENS, CLOSE_DAY_MESSAGES } from "./messages.js";
+import { TOKENS, CLOSE_DAY_MESSAGES, alpha } from "./messages.js";
 
 function pickIndex(exclude) {
   if (CLOSE_DAY_MESSAGES.length <= 1) return 0;
@@ -47,7 +47,7 @@ export default function CloseDayGame() {
           <div
             style={{
               background: `linear-gradient(160deg, ${TOKENS.bgCard}, ${TOKENS.bgCardEdge})`,
-              border: `1px solid ${TOKENS.gold}55`,
+              border: `1px solid ${alpha(TOKENS.gold, "55")}`,
               borderRadius: 16,
               padding: "18px 20px",
               marginBottom: 16,

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { BookmarkCheck, ChevronLeft, ChevronRight, ImageDown, List, Pause, Play } from "lucide-react";
-import { TOKENS } from "./messages.js";
+import { TOKENS, alpha } from "./messages.js";
 import { SURAHS, TOTAL_AYAHS } from "./surahs.js";
 import { cachedDoc, docsAvailable, readDoc, updateDoc } from "./doc.js";
 import SharePreview from "./SharePreview.jsx";
@@ -290,7 +290,10 @@ export default function QuranGame({ isOwner }) {
                   width: "100%",
                   background: `linear-gradient(180deg, ${PAPER} 0%, #EDE2CC 100%)`,
                   borderRadius: 12,
-                  borderLeft: `4px solid ${isMine ? HIS_COLOR : withinRead ? `${HIS_COLOR}55` : "transparent"}`,
+                  // Needed in light mode: cream paper on a cream page has almost
+                  // no edge without it. Invisible against the dark theme.
+                  border: "1px solid rgba(140,115,85,0.22)",
+                  borderLeft: `4px solid ${isMine ? HIS_COLOR : withinRead ? alpha(HIS_COLOR, "55") : "transparent"}`,
                   padding: "14px 16px",
                 }}
               >
@@ -345,7 +348,7 @@ export default function QuranGame({ isOwner }) {
                 height: 46,
                 borderRadius: 9999,
                 background: readHere >= s.ayahs ? "transparent" : TOKENS.gold,
-                border: readHere >= s.ayahs ? `1px solid ${TOKENS.gold}66` : "none",
+                border: readHere >= s.ayahs ? `1px solid ${alpha(TOKENS.gold, "66")}` : "none",
                 color: readHere >= s.ayahs ? TOKENS.gold : TOKENS.bgDeep,
                 fontWeight: 700,
                 fontSize: 13,
@@ -422,7 +425,7 @@ export default function QuranGame({ isOwner }) {
                 fontWeight: 700,
                 padding: "5px 11px",
                 borderRadius: 9999,
-                border: `1px solid ${lang === l.id ? `${TOKENS.gold}66` : TOKENS.line}`,
+                border: `1px solid ${lang === l.id ? `${alpha(TOKENS.gold, "66")}` : TOKENS.line}`,
                 color: lang === l.id ? TOKENS.gold : TOKENS.muted,
               }}
             >
@@ -461,7 +464,7 @@ export default function QuranGame({ isOwner }) {
               style={{
                 width: "100%",
                 background: `linear-gradient(160deg, ${TOKENS.bgCard}, ${TOKENS.bgCardEdge})`,
-                border: `1px solid ${finished ? `${HIS_COLOR}66` : TOKENS.line}`,
+                border: `1px solid ${finished ? `${alpha(HIS_COLOR, "66")}` : TOKENS.line}`,
                 borderRadius: 12,
                 padding: "9px 13px",
                 display: "flex",
@@ -479,7 +482,7 @@ export default function QuranGame({ isOwner }) {
                 </span>
               </span>
               {readHere > 0 && (
-                <span style={{ width: 7, height: 7, borderRadius: 9999, background: finished ? HIS_COLOR : `${HIS_COLOR}66`, flexShrink: 0 }} />
+                <span style={{ width: 7, height: 7, borderRadius: 9999, background: finished ? HIS_COLOR : `${alpha(HIS_COLOR, "66")}`, flexShrink: 0 }} />
               )}
               <span dir="rtl" lang="ar" style={{ color: TOKENS.gold, fontFamily: "'Amiri', serif", fontSize: 15, flexShrink: 0 }}>
                 {s.ar}

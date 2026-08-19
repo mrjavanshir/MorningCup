@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
 import { Check, Link2, Sunset } from "lucide-react";
-import { TOKENS } from "./messages.js";
+import { TOKENS, alpha } from "./messages.js";
 
 const PARTY_A = "Javanshir";
 const PARTY_B = "Ganira";
@@ -34,7 +34,7 @@ function Card({ who, text, delay }) {
       transition={{ type: "spring", stiffness: 240, damping: 24, delay }}
       style={{
         background: `linear-gradient(160deg, ${TOKENS.bgCard}, ${TOKENS.bgCardEdge})`,
-        border: `1px solid ${TOKENS.gold}44`,
+        border: `1px solid ${alpha(TOKENS.gold, "44")}`,
         borderRadius: 14,
         padding: "14px 16px",
       }}

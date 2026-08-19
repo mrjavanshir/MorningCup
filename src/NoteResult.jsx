@@ -1,6 +1,6 @@
 import React from "react";
 import { RefreshCw } from "lucide-react";
-import { TOKENS } from "./messages.js";
+import { TOKENS, alpha } from "./messages.js";
 
 export default function NoteResult({ message, onAgain, againLabel }) {
   return (
@@ -8,7 +8,7 @@ export default function NoteResult({ message, onAgain, againLabel }) {
       <div
         style={{
           background: `linear-gradient(160deg, ${TOKENS.bgCard}, ${TOKENS.bgCardEdge})`,
-          border: `1px solid ${TOKENS.gold}55`,
+          border: `1px solid ${alpha(TOKENS.gold, "55")}`,
           borderRadius: 18,
           padding: "20px 20px",
           marginBottom: 16,

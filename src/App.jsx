@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { BookMarked, BookOpen, Sparkle, ArrowUpFromLine, Check, Eraser, Gift, Link2, Moon, NotebookPen, Scale, Scroll, Stamp, Sun, Sunrise, Sunset } from "lucide-react";
-import { TOKENS } from "./messages.js";
+import { TOKENS, alpha } from "./messages.js";
 import SunGame from "./SunGame.jsx";
 import DaybreakGame from "./DaybreakGame.jsx";
 import AgreementGame from "./AgreementGame.jsx";
@@ -15,6 +15,7 @@ import SharedSettings from "./SharedSettings.jsx";
 import KhatmGame from "./KhatmGame.jsx";
 import QuranGame from "./QuranGame.jsx";
 import { cachedConfig, clearOwner, fetchSharedConfig, readOwner, unlockOwner } from "./owner.js";
+import { applyTheme, currentTheme } from "./theme.js";
 
 // `shared` controls only what the hub LISTS. Every game stays reachable at its
 // own /games/<id> URL whatever this says, so links already sent keep working.
@@ -70,6 +71,11 @@ export default function App() {
   // Start from whatever this device last saw so the list does not flicker or
   // sit empty offline, then refresh from the Worker.
   const [config, setConfig] = useState(cachedConfig);
+  const [theme, setTheme] = useState(currentTheme);
+
+  // Applied on mount too, not only on change: the stored choice has to reach
+  // <html> before anything paints.
+  useEffect(() => applyTheme(theme), [theme]);
 
   useEffect(() => {
     let cancelled = false;
@@ -182,6 +188,28 @@ export default function App() {
           .cf-fade, .sn-rays, .cf-nudge, .db-star, .fs-stamp-in { animation: none; }
         }
       `}</style>
+
+      <button
+        onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+        aria-label={theme === "light" ? "Switch to dark" : "Switch to light"}
+        style={{
+          position: "fixed",
+          top: 12,
+          right: 12,
+          zIndex: 40,
+          width: 34,
+          height: 34,
+          borderRadius: 9999,
+          border: `1px solid ${TOKENS.line}`,
+          background: TOKENS.bgCard,
+          color: TOKENS.muted,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {theme === "light" ? <Moon size={15} /> : <Sun size={15} />}
+      </button>
 
       <div className="w-full max-w-sm flex flex-col items-center">
         {!bare && (
@@ -333,7 +361,7 @@ export default function App() {
                           width: 40,
                           height: 40,
                           borderRadius: 12,
-                          background: `${TOKENS.gold}22`,
+                          background: `${alpha(TOKENS.gold, "22")}`,
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",

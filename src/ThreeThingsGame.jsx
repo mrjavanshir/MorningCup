@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
 import { Check, Link2, Moon } from "lucide-react";
-import { TOKENS, THREE_THINGS_CLOSERS } from "./messages.js";
+import { TOKENS, THREE_THINGS_CLOSERS, alpha } from "./messages.js";
 
 const SLOTS = 3;
 
@@ -69,7 +69,7 @@ export default function ThreeThingsGame() {
               transition={{ type: "spring", stiffness: 250, damping: 24, delay: i * 0.12 }}
               style={{
                 background: `linear-gradient(160deg, ${TOKENS.bgCard}, ${TOKENS.bgCardEdge})`,
-                border: `1px solid ${TOKENS.gold}44`,
+                border: `1px solid ${alpha(TOKENS.gold, "44")}`,
                 borderRadius: 14,
                 padding: "13px 16px",
                 display: "flex",
