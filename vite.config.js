@@ -49,6 +49,17 @@ export default defineConfig({
             },
           },
           {
+            // Surah text never changes, so a surah read once stays readable
+            // offline. 114 entries covers the whole Qur'an at most.
+            urlPattern: /^https:\/\/api\.alquran\.cloud\//,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "quran-text",
+              expiration: { maxEntries: 120, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
             // Recitations are large and never change, so keep them but cap the
             // number so the cache cannot grow without limit.
             urlPattern: /^https:\/\/everyayah\.com\//,
