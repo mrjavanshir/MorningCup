@@ -32,6 +32,21 @@ export function readOwner() {
   }
 }
 
+/**
+ * Unlock without a URL. An installed PWA has no address bar, and its storage
+ * can be separate from the browser it was installed from, so the ?owner= link
+ * cannot always reach it.
+ */
+export function unlockOwner(key) {
+  if (key.trim() !== OWNER_KEY) return false;
+  try {
+    localStorage.setItem(OWNER_FLAG, "1");
+  } catch {
+    return false;
+  }
+  return true;
+}
+
 export function clearOwner() {
   try {
     localStorage.removeItem(OWNER_FLAG);

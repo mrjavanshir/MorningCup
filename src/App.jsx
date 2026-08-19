@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Sparkle, ArrowUpFromLine, Check, Eraser, Gift, Link2, Moon, NotebookPen, Scale, Scroll, Stamp, Sun, Sunrise, Sunset } from "lucide-react";
 import { TOKENS } from "./messages.js";
 import SunGame from "./SunGame.jsx";
@@ -12,7 +12,7 @@ import ThreeThingsGame from "./ThreeThingsGame.jsx";
 import HighlightsGame from "./HighlightsGame.jsx";
 import NamesGame from "./NamesGame.jsx";
 import SharedSettings from "./SharedSettings.jsx";
-import { cachedConfig, clearOwner, fetchSharedConfig, readOwner } from "./owner.js";
+import { cachedConfig, clearOwner, fetchSharedConfig, readOwner, unlockOwner } from "./owner.js";
 
 // `shared` controls only what the hub LISTS. Every game stays reachable at its
 // own /games/<id> URL whatever this says, so links already sent keep working.
@@ -82,6 +82,32 @@ export default function App() {
     setIsOwner(false);
   };
 
+  const holdRef = useRef(null);
+  const [showUnlock, setShowUnlock] = useState(false);
+  const [keyDraft, setKeyDraft] = useState("");
+  const [keyBad, setKeyBad] = useState(false);
+
+  const startHold = () => {
+    if (isOwner) return;
+    holdRef.current = setTimeout(() => setShowUnlock(true), 1500);
+  };
+  const cancelHold = () => {
+    clearTimeout(holdRef.current);
+    holdRef.current = null;
+  };
+  useEffect(() => () => clearTimeout(holdRef.current), []);
+
+  const tryUnlock = () => {
+    if (unlockOwner(keyDraft)) {
+      setIsOwner(true);
+      setShowUnlock(false);
+      setKeyDraft("");
+      setKeyBad(false);
+    } else {
+      setKeyBad(true);
+    }
+  };
+
   const copyLink = async (id) => {
     try {
       await navigator.clipboard.writeText(gameLink(id));
@@ -127,8 +153,24 @@ export default function App() {
 
       <div className="w-full max-w-sm flex flex-col items-center">
         {isNight ? <Moon size={18} color={TOKENS.gold} className="mb-2" /> : <Sun size={18} color={TOKENS.gold} className="mb-2" />}
+        {/* Press and hold the title for ~1.5s to unlock without a URL — the
+            only way in from an installed app, which has no address bar. */}
         <h1
-          style={{ color: TOKENS.cream, fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: 26, textAlign: "center" }}
+          onPointerDown={startHold}
+          onPointerUp={cancelHold}
+          onPointerLeave={cancelHold}
+          onPointerCancel={cancelHold}
+          onContextMenu={(e) => e.preventDefault()}
+          style={{
+            color: TOKENS.cream,
+            fontFamily: "'Fraunces', serif",
+            fontWeight: 600,
+            fontSize: 26,
+            textAlign: "center",
+            userSelect: "none",
+            WebkitUserSelect: "none",
+            WebkitTouchCallout: "none",
+          }}
           className="mb-1"
         >
           {isNight ? "Good Night, Ganira" : "Hello, Ganira"}
@@ -136,6 +178,59 @@ export default function App() {
         <p style={{ color: TOKENS.muted, fontSize: 13.5, textAlign: "center" }} className="mb-8">
           {isNight ? "something small before you sleep." : "a little something, whenever you need it."}
         </p>
+
+        {showUnlock && (
+          <div
+            className="w-full flex flex-col items-center"
+            style={{
+              background: `linear-gradient(160deg, ${TOKENS.bgCard}, ${TOKENS.bgCardEdge})`,
+              border: `1px solid ${TOKENS.line}`,
+              borderRadius: 14,
+              padding: "14px 16px",
+              marginBottom: 22,
+            }}
+          >
+            <input
+              value={keyDraft}
+              onChange={(e) => {
+                setKeyDraft(e.target.value);
+                setKeyBad(false);
+              }}
+              onKeyDown={(e) => e.key === "Enter" && tryUnlock()}
+              placeholder="Key"
+              autoFocus
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              style={{
+                width: "100%",
+                background: TOKENS.bgDeep,
+                border: `1px solid ${keyBad ? "#C4184F" : TOKENS.line}`,
+                borderRadius: 8,
+                color: TOKENS.cream,
+                fontFamily: "'Manrope', sans-serif",
+                fontSize: 13,
+                padding: "8px 10px",
+                marginBottom: 10,
+              }}
+            />
+            <div className="flex items-center gap-4">
+              <button onClick={tryUnlock} style={{ color: TOKENS.gold, fontSize: 12, fontWeight: 700 }}>
+                Unlock
+              </button>
+              <button
+                onClick={() => {
+                  setShowUnlock(false);
+                  setKeyDraft("");
+                  setKeyBad(false);
+                }}
+                style={{ color: TOKENS.muted, fontSize: 12 }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
 
         {locked ? (
           <div className="flex flex-col items-center" style={{ paddingTop: 12 }}>
