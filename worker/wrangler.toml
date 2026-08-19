@@ -11,4 +11,4 @@ ALLOWED_ORIGINS = "https://mrjavanshir.github.io,http://localhost:5173,http://lo
 #   npx wrangler kv namespace create STORE
 [[kv_namespaces]]
 binding = "STORE"
-id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+id = "08418d178e70467c998c321bfe5dcf2a"
