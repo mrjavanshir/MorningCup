@@ -83,19 +83,43 @@ export default function App() {
   };
 
   const holdRef = useRef(null);
+  const tapsRef = useRef({ count: 0, last: 0 });
   const [showUnlock, setShowUnlock] = useState(false);
+  const [holding, setHolding] = useState(false);
   const [keyDraft, setKeyDraft] = useState("");
   const [keyBad, setKeyBad] = useState(false);
 
+  const openUnlock = () => {
+    setHolding(false);
+    setShowUnlock(true);
+  };
+
   const startHold = () => {
     if (isOwner) return;
-    holdRef.current = setTimeout(() => setShowUnlock(true), 1500);
+    setHolding(true);
+    holdRef.current = setTimeout(openUnlock, 1200);
   };
+  // Deliberately NOT bound to pointerleave: on a touch screen the smallest
+  // finger drift used to cancel the hold, which is most of why it felt broken.
   const cancelHold = () => {
     clearTimeout(holdRef.current);
     holdRef.current = null;
+    setHolding(false);
   };
   useEffect(() => () => clearTimeout(holdRef.current), []);
+
+  // Second way in, for when a long press is awkward: five taps on the sun.
+  const tapSun = () => {
+    if (isOwner) return;
+    const now = Date.now();
+    const t = tapsRef.current;
+    t.count = now - t.last > 800 ? 1 : t.count + 1;
+    t.last = now;
+    if (t.count >= 5) {
+      t.count = 0;
+      openUnlock();
+    }
+  };
 
   const tryUnlock = () => {
     if (unlockOwner(keyDraft)) {
@@ -152,13 +176,15 @@ export default function App() {
       `}</style>
 
       <div className="w-full max-w-sm flex flex-col items-center">
-        {isNight ? <Moon size={18} color={TOKENS.gold} className="mb-2" /> : <Sun size={18} color={TOKENS.gold} className="mb-2" />}
-        {/* Press and hold the title for ~1.5s to unlock without a URL — the
-            only way in from an installed app, which has no address bar. */}
+        <button onClick={tapSun} aria-label="Sun" className="mb-2" style={{ background: "none", border: "none", padding: 0 }}>
+          {isNight ? <Moon size={18} color={TOKENS.gold} /> : <Sun size={18} color={TOKENS.gold} />}
+        </button>
+        {/* Two ways to unlock without a URL, which an installed app cannot use:
+            hold the title, or tap the sun five times. The title dims while held
+            so it is obvious the press is registering. */}
         <h1
           onPointerDown={startHold}
           onPointerUp={cancelHold}
-          onPointerLeave={cancelHold}
           onPointerCancel={cancelHold}
           onContextMenu={(e) => e.preventDefault()}
           style={{
@@ -170,6 +196,9 @@ export default function App() {
             userSelect: "none",
             WebkitUserSelect: "none",
             WebkitTouchCallout: "none",
+            touchAction: "manipulation",
+            opacity: holding ? 0.55 : 1,
+            transition: "opacity 1.2s linear",
           }}
           className="mb-1"
         >
