@@ -215,7 +215,7 @@ export default function App() {
           {isNight ? "Good Night, Ganira" : "Hello, Ganira"}
         </h1>
         <p style={{ color: TOKENS.muted, fontSize: 13.5, textAlign: "center" }} className="mb-8">
-          {isNight ? "nothing in here is urgent. go to sleep." : "small things, no occasion required."}
+          {isNight ? "something small before you sleep." : "a little something, whenever you need it."}
         </p>
 
         {showUnlock && (
