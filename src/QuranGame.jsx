@@ -147,21 +147,24 @@ export default function QuranGame({ isOwner }) {
 
   // Marking ayah N records N ayahs read in THIS surah — so jumping to a late
   // surah adds only what you read there, rather than claiming everything before.
-  const markHere = async (surah, ayah) => {
+  // `count` of 0 clears the surah; the bookmark only moves when reading forward.
+  const setProgress = async (surah, count, bookmark = true) => {
     const optimistic = {
       ...doc,
-      marks: { ...marks, [me]: { surah, ayah } },
-      read: { ...readAll, [me]: { ...myRead, [surah]: ayah } },
+      marks: bookmark ? { ...marks, [me]: { surah, ayah: count } } : marks,
+      read: { ...readAll, [me]: { ...myRead, [surah]: count } },
     };
     setDoc(optimistic);
     const saved = await updateDoc(DOC, (latest) => ({
       ...latest,
-      marks: { ...(latest.marks || {}), [me]: { surah, ayah } },
-      read: { ...(latest.read || {}), [me]: { ...((latest.read || {})[me] || {}), [surah]: ayah } },
+      marks: bookmark ? { ...(latest.marks || {}), [me]: { surah, ayah: count } } : latest.marks || {},
+      read: { ...(latest.read || {}), [me]: { ...((latest.read || {})[me] || {}), [surah]: count } },
       updated: new Date().toISOString(),
     }));
     if (saved) setDoc(saved);
   };
+
+  const markHere = (surah, ayah) => setProgress(surah, ayah);
 
   const listed = order === "revelation" ? [...SURAHS].sort((a, b) => a.order - b.order) : SURAHS;
 
@@ -195,9 +198,22 @@ export default function QuranGame({ isOwner }) {
           </button>
         </div>
 
-        <button onClick={() => setOpenSurah(null)} style={{ color: TOKENS.muted, fontSize: 11.5 }} className="flex items-center gap-1.5 mb-4">
-          <X size={12} /> All surahs
-        </button>
+        <motion.button
+          onClick={() => setOpenSurah(null)}
+          whileTap={{ scale: 0.98 }}
+          style={{
+            width: "100%",
+            height: 40,
+            borderRadius: 9999,
+            border: `1px solid ${TOKENS.line}`,
+            color: TOKENS.cream,
+            fontSize: 12.5,
+            fontWeight: 700,
+          }}
+          className="flex items-center justify-center gap-2 mb-4"
+        >
+          <X size={14} /> All surahs
+        </motion.button>
 
         {loadState === "loading" && <p style={{ color: TOKENS.muted, fontSize: 12.5 }} className="mt-4">Loading…</p>}
         {loadState === "failed" && (
@@ -250,6 +266,46 @@ export default function QuranGame({ isOwner }) {
             );
           })}
         </div>
+
+        {ayahs && ayahs.length > 0 && (
+          <div className="w-full flex flex-col items-center mt-5">
+            <motion.button
+              onClick={() => setProgress(openSurah, readHere >= s.ayahs ? 0 : s.ayahs, readHere < s.ayahs)}
+              whileTap={{ scale: 0.98 }}
+              style={{
+                width: "100%",
+                height: 46,
+                borderRadius: 9999,
+                background: readHere >= s.ayahs ? "transparent" : TOKENS.gold,
+                border: readHere >= s.ayahs ? `1px solid ${TOKENS.gold}66` : "none",
+                color: readHere >= s.ayahs ? TOKENS.gold : TOKENS.bgDeep,
+                fontWeight: 700,
+                fontSize: 13,
+              }}
+              className="flex items-center justify-center gap-2 mb-3"
+            >
+              <BookmarkCheck size={15} />
+              {readHere >= s.ayahs ? `${s.en} read — tap to undo` : `Mark all ${s.ayahs} ayahs read`}
+            </motion.button>
+
+            <motion.button
+              onClick={() => setOpenSurah(null)}
+              whileTap={{ scale: 0.98 }}
+              style={{
+                width: "100%",
+                height: 46,
+                borderRadius: 9999,
+                border: `1px solid ${TOKENS.line}`,
+                color: TOKENS.cream,
+                fontWeight: 700,
+                fontSize: 13,
+              }}
+              className="flex items-center justify-center gap-2"
+            >
+              <X size={15} /> All surahs
+            </motion.button>
+          </div>
+        )}
       </div>
     );
   }
