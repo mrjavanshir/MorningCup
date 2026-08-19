@@ -1,34 +1,68 @@
 /**
- * Who is looking, and which games they should see listed.
+ * Who you are, and what you are allowed to do — deliberately two things.
  *
- * A static site cannot keep a secret: OWNER_KEY ships in the bundle and is
+ * `identity` is whose data this device writes: "j" or "g". It is decided once
+ * and never moves, because the khatm and the reading marks are stored per
+ * person and a device that changed identity would write into the other one's
+ * record.
+ *
+ * `isAdmin` is only permission: see every game, open the settings. An admin
+ * previewing the user view keeps their identity, so anything they mark while
+ * previewing is still filed under them. That separation is the whole point —
+ * previously one flag meant both, so previewing silently wrote as the other
+ * person.
+ *
+ * A static site cannot keep a secret: ADMIN_KEY ships in the bundle and is
  * readable by anyone who looks. It is a latch, not a lock — enough to keep the
- * full list and the settings page out of the way of someone casually opening
- * the hub, and nothing more. The same value gates config writes on the Worker
- * (see OWNER_KEY in worker/wrangler.toml — keep the two equal).
+ * full list and the settings out of the way of someone casually opening the
+ * hub. The same value gates config writes on the Worker (see OWNER_KEY in
+ * worker/wrangler.toml — keep the two equal).
  */
 
 const STORE_URL = (import.meta.env.VITE_STORE_URL || "").replace(/\/+$/, "");
 
-export const OWNER_KEY = "q7m2-havaland-4tx9";
-const OWNER_FLAG = "is-owner";
+export const ADMIN_KEY = "q7m2-havaland-4tx9";
+export const OWNER_KEY = ADMIN_KEY; // the Worker still calls it this
+export const ME = "j";
+export const THEM = "g";
+
+const ADMIN_FLAG = "is-admin";
+const IDENTITY_KEY = "identity";
+const LEGACY_FLAG = "is-owner";
 const CONFIG_CACHE = "shared-config";
 
-export function readOwner() {
+/** Devices unlocked before roles existed carried one flag meaning both. */
+function migrateLegacy() {
+  if (localStorage.getItem(LEGACY_FLAG) === "1") {
+    localStorage.setItem(ADMIN_FLAG, "1");
+    localStorage.setItem(IDENTITY_KEY, ME);
+    localStorage.removeItem(LEGACY_FLAG);
+  }
+}
+
+function grantAdmin() {
+  localStorage.setItem(ADMIN_FLAG, "1");
+  localStorage.setItem(IDENTITY_KEY, ME);
+}
+
+export function readSession() {
   try {
+    migrateLegacy();
     const param = new URLSearchParams(window.location.search).get("owner");
-    if (param === OWNER_KEY) {
-      localStorage.setItem(OWNER_FLAG, "1");
+    if (param === ADMIN_KEY) {
+      grantAdmin();
       // Drop the key from the address bar so it is not left in history or
       // copied by accident when sharing the hub link.
       const url = new URL(window.location.href);
       url.searchParams.delete("owner");
       window.history.replaceState({}, "", url);
-      return true;
     }
-    return localStorage.getItem(OWNER_FLAG) === "1";
+    return {
+      isAdmin: localStorage.getItem(ADMIN_FLAG) === "1",
+      identity: localStorage.getItem(IDENTITY_KEY) === ME ? ME : THEM,
+    };
   } catch {
-    return false;
+    return { isAdmin: false, identity: THEM };
   }
 }
 
@@ -37,19 +71,26 @@ export function readOwner() {
  * can be separate from the browser it was installed from, so the ?owner= link
  * cannot always reach it.
  */
-export function unlockOwner(key) {
-  if (key.trim() !== OWNER_KEY) return false;
+export function unlockAdmin(key) {
+  if (key.trim() !== ADMIN_KEY) return false;
   try {
-    localStorage.setItem(OWNER_FLAG, "1");
+    grantAdmin();
   } catch {
     return false;
   }
   return true;
 }
 
-export function clearOwner() {
+/**
+ * Hand the device over entirely — clears the role AND the identity, so it
+ * becomes an ordinary user device. Distinct from previewing the user view,
+ * which must not touch identity.
+ */
+export function signOut() {
   try {
-    localStorage.removeItem(OWNER_FLAG);
+    localStorage.removeItem(ADMIN_FLAG);
+    localStorage.removeItem(IDENTITY_KEY);
+    localStorage.removeItem(LEGACY_FLAG);
   } catch {
     /* private mode */
   }

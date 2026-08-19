@@ -11,8 +11,9 @@ const HER = "g";
 const HIS_COLOR = TOKENS.gold;
 const HER_COLOR = "#7FB2A6";
 
-export default function KhatmGame({ isOwner }) {
-  const me = isOwner ? HIM : HER;
+export default function KhatmGame({ identity }) {
+  const me = identity === HIM ? HIM : HER;
+  const otherName = me === HIM ? "Ganira" : "Javanshir";
   const [juz, setJuz] = useState(() => cachedDoc(DOC)?.juz || {});
   const [status, setStatus] = useState("loading"); // loading | ready | saving | offline
   const [confirmReset, setConfirmReset] = useState(false);
@@ -106,11 +107,11 @@ export default function KhatmGame({ isOwner }) {
       <div className="flex items-center gap-4 mb-5" style={{ fontSize: 11 }}>
         <span style={{ color: HIS_COLOR, display: "flex", alignItems: "center", gap: 5 }}>
           <span style={{ width: 8, height: 8, borderRadius: 2, background: HIS_COLOR }} />
-          {isOwner ? "You" : "Javanshir"} {mine !== null && (isOwner ? mine : theirs)}
+          {"You"} {mine}
         </span>
         <span style={{ color: HER_COLOR, display: "flex", alignItems: "center", gap: 5 }}>
           <span style={{ width: 8, height: 8, borderRadius: 2, background: HER_COLOR }} />
-          {isOwner ? "Ganira" : "You"} {isOwner ? theirs : mine}
+          {otherName} {theirs}
         </span>
       </div>
 

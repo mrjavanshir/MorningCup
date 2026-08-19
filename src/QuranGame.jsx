@@ -99,8 +99,9 @@ async function fetchSurah(n, lang) {
   }));
 }
 
-export default function QuranGame({ isOwner }) {
-  const me = isOwner ? HIM : HER;
+export default function QuranGame({ identity }) {
+  const me = identity === HIM ? HIM : HER;
+  const otherName = me === HIM ? "Ganira" : "Javanshir";
   const them = me === HIM ? HER : HIM;
 
   const [doc, setDoc] = useState(() => cachedDoc(DOC) || {});
@@ -450,7 +451,7 @@ export default function QuranGame({ isOwner }) {
       </div>
       <div className="flex items-center gap-4 mb-4" style={{ fontSize: 10.5 }}>
         <span style={{ color: HIS_COLOR }}>{t.you} {myTotal}</span>
-        <span style={{ color: HER_COLOR }}>{isOwner ? "Ganira" : "Javanshir"} {theirTotal}</span>
+        <span style={{ color: HER_COLOR }}>{otherName} {theirTotal}</span>
       </div>
 
       <div className="w-full flex items-center justify-between mb-4" style={{ gap: 8 }}>

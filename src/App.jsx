@@ -14,7 +14,7 @@ import NamesGame from "./NamesGame.jsx";
 import SharedSettings from "./SharedSettings.jsx";
 import KhatmGame from "./KhatmGame.jsx";
 import QuranGame from "./QuranGame.jsx";
-import { cachedConfig, clearOwner, fetchSharedConfig, readOwner, unlockOwner } from "./owner.js";
+import { cachedConfig, fetchSharedConfig, ME, readSession, signOut, unlockAdmin } from "./owner.js";
 import { applyTheme, currentTheme } from "./theme.js";
 
 // `shared` controls only what the hub LISTS. Every game stays reachable at its
@@ -66,7 +66,12 @@ export default function App() {
   const [route, setRoute] = useState(parseRoute);
   const [lockHour] = useState(nightLockHour);
   const [copiedId, setCopiedId] = useState(null);
-  const [isOwner, setIsOwner] = useState(readOwner);
+  const [session, setSession] = useState(readSession);
+  // Previewing is in-memory only. It must never touch identity, or marks made
+  // while previewing would be filed under the other person.
+  const [viewAsUser, setViewAsUser] = useState(false);
+  const isAdmin = session.isAdmin;
+  const asAdmin = isAdmin && !viewAsUser;
   const [showSettings, setShowSettings] = useState(false);
   // Start from whatever this device last saw so the list does not flicker or
   // sit empty offline, then refresh from the Worker.
@@ -88,11 +93,13 @@ export default function App() {
   }, []);
 
   const isShared = (g) => (config && g.id in config ? config[g.id] : g.shared !== false);
-  const visibleGames = isOwner ? GAMES : GAMES.filter(isShared);
+  const visibleGames = asAdmin ? GAMES : GAMES.filter(isShared);
 
-  const lockAgain = () => {
-    clearOwner();
-    setIsOwner(false);
+  const handOverDevice = () => {
+    signOut();
+    setSession({ isAdmin: false, identity: session.identity === ME ? ME : session.identity });
+    setSession(readSession());
+    setViewAsUser(false);
   };
 
   const holdRef = useRef(null);
@@ -108,7 +115,7 @@ export default function App() {
   };
 
   const startHold = () => {
-    if (isOwner) return;
+    if (isAdmin) return;
     setHolding(true);
     holdRef.current = setTimeout(openUnlock, 1200);
   };
@@ -123,7 +130,7 @@ export default function App() {
 
   // Second way in, for when a long press is awkward: five taps on the sun.
   const tapSun = () => {
-    if (isOwner) return;
+    if (isAdmin) return;
     const now = Date.now();
     const t = tapsRef.current;
     t.count = now - t.last > 800 ? 1 : t.count + 1;
@@ -135,8 +142,8 @@ export default function App() {
   };
 
   const tryUnlock = () => {
-    if (unlockOwner(keyDraft)) {
-      setIsOwner(true);
+    if (unlockAdmin(keyDraft)) {
+      setSession(readSession());
       setShowUnlock(false);
       setKeyDraft("");
       setKeyBad(false);
@@ -312,11 +319,11 @@ export default function App() {
               This one opens after {String(lockHour).padStart(2, "0")}:00. Come back tonight.
             </p>
           </div>
-        ) : showSettings && isOwner ? (
+        ) : showSettings && isAdmin ? (
           <SharedSettings games={GAMES} onBack={() => setShowSettings(false)} />
         ) : route.view === "hub" ? (
           <>
-            {isOwner && (
+            {asAdmin && (
               <p style={{ color: TOKENS.muted, fontSize: 11.5, textAlign: "center" }} className="mb-4">
                 Each game has its own link — whoever opens it only sees that one game.
               </p>
@@ -375,7 +382,7 @@ export default function App() {
                         <div style={{ color: TOKENS.muted, fontSize: 12.5, marginTop: 2 }}>{g.desc}</div>
                       </div>
                     </button>
-                    {isOwner && (
+                    {asAdmin && (
                     <button
                       onClick={() => copyLink(g.id)}
                       aria-label={`Copy the ${g.title} link`}
@@ -390,23 +397,38 @@ export default function App() {
                 );
               })}
             </div>
-            {isOwner && (
-              <div className="flex items-center gap-2 mt-5">
-                <span style={{ color: TOKENS.gold, fontSize: 10.5, fontWeight: 700, letterSpacing: 1.2 }}>
-                  YOUR VIEW · {GAMES.length} games
+            {isAdmin && (
+              <div className="flex flex-col items-center gap-1.5 mt-5">
+                <div className="flex items-center gap-2">
+                  <span
+                    style={{
+                      color: viewAsUser ? TOKENS.muted : TOKENS.gold,
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      letterSpacing: 1.2,
+                    }}
+                  >
+                    {viewAsUser ? `USER VIEW · ${visibleGames.length}` : `ADMIN · ${GAMES.length} games`}
+                  </span>
+                  {!viewAsUser && (
+                    <button
+                      onClick={() => setShowSettings(true)}
+                      style={{ color: TOKENS.gold, fontSize: 10.5, fontWeight: 700 }}
+                    >
+                      what she sees
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setViewAsUser((v) => !v)}
+                    style={{ color: TOKENS.muted, fontSize: 10.5, opacity: 0.8 }}
+                  >
+                    {viewAsUser ? "back to admin" : "view as user"}
+                  </button>
+                </div>
+                {/* Previewing changes what is listed, never whose data is written. */}
+                <span style={{ color: TOKENS.muted, fontSize: 9.5, opacity: 0.6 }}>
+                  saving as {session.identity === ME ? "Javanshir" : "Ganira"}
                 </span>
-                <button
-                  onClick={() => setShowSettings(true)}
-                  style={{ color: TOKENS.gold, fontSize: 10.5, fontWeight: 700 }}
-                >
-                  what she sees
-                </button>
-                <button
-                  onClick={lockAgain}
-                  style={{ color: TOKENS.muted, fontSize: 10.5, opacity: 0.75 }}
-                >
-                  preview hers
-                </button>
               </div>
             )}
           </>
@@ -419,8 +441,8 @@ export default function App() {
             {route.id === "surprise" && <SurpriseBoxGame />}
             {route.id === "jar" && <VerseJarGame />}
             {route.id === "names" && <NamesGame />}
-            {route.id === "khatm" && <KhatmGame isOwner={isOwner} />}
-            {route.id === "quran" && <QuranGame isOwner={isOwner} />}
+            {route.id === "khatm" && <KhatmGame identity={session.identity} />}
+            {route.id === "quran" && <QuranGame identity={session.identity} />}
             {route.id === "close-day" && <CloseDayGame />}
             {route.id === "three-things" && <ThreeThingsGame />}
             {route.id === "highlights" && <HighlightsGame />}
