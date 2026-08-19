@@ -96,7 +96,7 @@ function fit(ctx, verse, maxWidth, maxHeight) {
     ctx.font = `600 ${enSize}px Fraunces, serif`;
     const enLines = wrap(ctx, verse.text, maxWidth);
 
-    const total = arLines.length * arLead + 96 + enLines.length * enLead + 104;
+    const total = arLines.length * arLead + 96 + enLines.length * enLead + 162;
     if (total <= maxHeight) return { arSize, enSize, arLead, enLead, arLines, enLines, total };
   }
   const arSize = 27;
@@ -126,6 +126,52 @@ function ornament(ctx, cx, y, color) {
   ctx.restore();
 }
 
+/**
+ * A two-centred pointed arch — the shape of a mihrab niche, and the frame most
+ * Qur'an manuscripts set their text inside. Far more evocative than a rectangle.
+ */
+function archPath(ctx, x, y, w, h, spring) {
+  const cx = x + w / 2;
+  ctx.beginPath();
+  ctx.moveTo(x, y + h);
+  ctx.lineTo(x, y + spring);
+  ctx.quadraticCurveTo(x, y, cx, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + spring);
+  ctx.lineTo(x + w, y + h);
+  ctx.closePath();
+}
+
+/** Four small diamonds, one per corner, to stop the frame reading as a box. */
+function cornerMarks(ctx, x, y, w, h, color) {
+  ctx.fillStyle = color;
+  for (const [px, py] of [[x, y + h], [x + w, y + h]]) {
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(Math.PI / 4);
+    ctx.fillRect(-6, -6, 12, 12);
+    ctx.restore();
+  }
+}
+
+/** The rosette that closes an ayah, with its number inside. */
+function rosette(ctx, cx, cy, r, color, n) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.6;
+  for (let i = 0; i < 8; i++) {
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, r, r * 0.42, (i * Math.PI) / 8, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.fillStyle = color;
+  ctx.font = "700 20px Manrope, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(String(n), cx, cy + 1);
+  ctx.textBaseline = "alphabetic";
+  ctx.restore();
+}
+
 export async function renderVerseCard(verse, themeId = "paper") {
   await Promise.all([
     document.fonts.load("400 54px Amiri"),
@@ -152,17 +198,16 @@ export async function renderVerseCard(verse, themeId = "paper") {
   ctx.fillStyle = vig;
   ctx.fillRect(0, 0, W, H);
 
-  // Hairline frame, inset — the single biggest thing that makes it read as a card.
+  // A mihrab arch rather than a box: the frame Qur'an pages have always used.
   ctx.strokeStyle = t.frame;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.roundRect(44, 44, W - 88, H - 88, 26);
+  ctx.lineWidth = 2.5;
+  archPath(ctx, 46, 46, W - 92, H - 92, (H - 92) * 0.42);
   ctx.stroke();
-  ctx.strokeStyle = `${t.accent}44`;
+  ctx.strokeStyle = `${t.accent}55`;
   ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.roundRect(58, 58, W - 116, H - 116, 18);
+  archPath(ctx, 62, 62, W - 124, H - 124, (H - 124) * 0.42);
   ctx.stroke();
+  cornerMarks(ctx, 46, 46, W - 92, H - 92, `${t.accent}88`);
 
   const maxWidth = W - PAD * 2 - 40;
   const layout = fit(ctx, verse, maxWidth, H - PAD * 2 - 190);
@@ -190,10 +235,16 @@ export async function renderVerseCard(verse, themeId = "paper") {
     y += layout.enLead;
   }
 
-  y += 52;
+  y += 46;
+  const ayahNumber = (verse.ref.match(/:(\d+)\s*$/) || [])[1];
+  if (ayahNumber) {
+    rosette(ctx, W / 2, y, 26, `${t.accent}cc`, ayahNumber);
+    y += 58;
+  }
   ctx.fillStyle = t.accent;
   ctx.font = "700 25px Manrope, sans-serif";
   ctx.letterSpacing = "3px";
+  ctx.textAlign = "center";
   ctx.fillText(verse.ref.toUpperCase(), W / 2, y);
   ctx.letterSpacing = "0px";
 

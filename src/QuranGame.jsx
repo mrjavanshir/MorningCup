@@ -297,14 +297,40 @@ export default function QuranGame({ isOwner }) {
                   padding: "14px 16px",
                 }}
               >
-                <p dir="rtl" lang="ar" style={{ color: "#2A1620", fontFamily: "'Amiri', serif", fontSize: 21, lineHeight: 2, textAlign: "right" }}>
+                <p dir="rtl" lang="ar" style={{ color: "#2A1620", fontFamily: "'Amiri', serif", fontSize: 22, lineHeight: 2.05, textAlign: "right" }}>
                   {a.ar}
                 </p>
-                <p style={{ color: "#5A4632", fontFamily: "'Fraunces', serif", fontSize: 13.5, lineHeight: 1.5, marginTop: 8 }}>
+
+                {/* Rule with a diamond, echoing the share card's divider. */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "12px 0 10px" }}>
+                  <span style={{ flex: 1, height: 1, background: "rgba(140,115,85,0.28)" }} />
+                  <span style={{ width: 5, height: 5, background: "rgba(140,115,85,0.5)", transform: "rotate(45deg)" }} />
+                  <span style={{ flex: 1, height: 1, background: "rgba(140,115,85,0.28)" }} />
+                </div>
+
+                <p style={{ color: "#5A4632", fontFamily: "'Fraunces', serif", fontSize: 13.5, lineHeight: 1.55 }}>
                   {a.tr}
                 </p>
-                <div className="flex items-center justify-between" style={{ marginTop: 8 }}>
-                  <span style={{ color: "#8C7355", fontSize: 10.5, fontWeight: 700 }}>{openSurah}:{a.n}</span>
+                <div className="flex items-center justify-between" style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid rgba(140,115,85,0.18)" }}>
+                  {/* The number sits in a medallion, the way an ayah is closed on the page. */}
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      minWidth: 26,
+                      height: 26,
+                      padding: "0 7px",
+                      borderRadius: 9999,
+                      border: "1px solid rgba(140,115,85,0.45)",
+                      background: "rgba(140,115,85,0.08)",
+                      color: "#8C6A3A",
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {openSurah}:{a.n}
+                  </span>
                   <div className="flex items-center gap-4">
                     <button
                       onClick={() => playAyah(a.n)}
