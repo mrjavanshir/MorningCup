@@ -18,6 +18,9 @@ import { cachedConfig, clearOwner, fetchSharedConfig, readOwner, unlockOwner } f
 
 // `shared` controls only what the hub LISTS. Every game stays reachable at its
 // own /games/<id> URL whatever this says, so links already sent keep working.
+// `bare` drops the app header on that game's page, for the ones you sit inside
+// for a while rather than glance at — the greeting is just a band of dead space
+// above a long read.
 const GAMES = [
   { id: "sun", icon: Sunrise, title: "Sunrise", desc: "Tap to raise it.", shared: true },
   { id: "daybreak", icon: ArrowUpFromLine, title: "Daybreak", desc: "Drag to bring up the sun.", shared: true },
@@ -27,7 +30,7 @@ const GAMES = [
   { id: "jar", icon: Scroll, title: "Verses Jar", desc: "Read me when…", shared: true },
   { id: "names", icon: Sparkle, title: "The 99 Names", desc: "One at a time, or all of them.", shared: true },
   { id: "khatm", icon: BookOpen, title: "Khatm Together", desc: "Thirty juz, between the two of you.", shared: true },
-  { id: "quran", icon: BookMarked, title: "Read the Qur'an", desc: "All 114, with where you each are.", shared: true },
+  { id: "quran", icon: BookMarked, title: "Read the Qur'an", desc: "All 114, with where you each are.", shared: true, bare: true },
   { id: "close-day", icon: Eraser, title: "Close the Day", desc: "Dump it out, watch it go.", night: true, shared: true },
   { id: "three-things", icon: NotebookPen, title: "Three Good Things", desc: "Log what went well today.", night: true, shared: true },
   { id: "highlights", icon: Sunset, title: "Highlights", desc: "Both share the best bit.", night: true, shared: true },
@@ -152,6 +155,7 @@ export default function App() {
 
   const activeGame = route.view === "game" ? GAMES.find((g) => g.id === route.id) : null;
   const isNight = !!activeGame?.night;
+  const bare = !!activeGame?.bare;
   const locked = route.view === "game" && lockHour !== null;
 
   return (
@@ -180,6 +184,8 @@ export default function App() {
       `}</style>
 
       <div className="w-full max-w-sm flex flex-col items-center">
+        {!bare && (
+          <>
         <button onClick={tapSun} aria-label="Sun" className="mb-2" style={{ background: "none", border: "none", padding: 0 }}>
           {isNight ? <Moon size={18} color={TOKENS.gold} /> : <Sun size={18} color={TOKENS.gold} />}
         </button>
@@ -263,6 +269,9 @@ export default function App() {
               </button>
             </div>
           </div>
+        )}
+
+          </>
         )}
 
         {locked ? (
