@@ -368,6 +368,7 @@ export default function VerseJarGame() {
   const [notes, setNotes] = useState(loadNotes);
   const [noteDraft, setNoteDraft] = useState(null); // null = not editing
   const [imageState, setImageState] = useState("idle"); // idle | working | saved
+  const [confirmReset, setConfirmReset] = useState(false);
   const [shared, setShared] = useState(false);
   const [lid, setLid] = useState(() => (readSharedId() ? "open" : "closed"));
   const [playing, setPlaying] = useState(false);
@@ -408,8 +409,15 @@ export default function VerseJarGame() {
     const payload = { kept: Object.keys(nextKept), read: Object.keys(nextRead), notes: keptNotes };
     const existing = loadCollection();
     if (existing) {
-      await updateCollection(existing.id, existing.key, payload);
-      return;
+      if (await updateCollection(existing.id, existing.key, payload)) return;
+      // The collection is gone — deleted, or expired after ~13 months. Without
+      // this the stale id would sit in localStorage and every later sync would
+      // fail silently, so drop it and start a fresh one below.
+      try {
+        localStorage.removeItem(COLLECTION_KEY);
+      } catch {
+        /* private mode */
+      }
     }
     const created = await createCollection(payload);
     if (created) {
@@ -442,6 +450,23 @@ export default function VerseJarGame() {
       setImageState("idle");
     }
     setTimeout(() => setImageState("idle"), 2200);
+  };
+
+  // Wipes this device's jar state. The collection is abandoned rather than
+  // deleted — the Worker has no delete route, and it expires on its own.
+  const resetJar = () => {
+    for (const key of [READ_KEY, KEPT_KEY, NOTES_KEY, COLLECTION_KEY]) {
+      try {
+        localStorage.removeItem(key);
+      } catch {
+        /* private mode */
+      }
+    }
+    setRead({});
+    setKept({});
+    setNotes({});
+    setShowKept(false);
+    setConfirmReset(false);
   };
 
   const saveNote = () => {
@@ -1125,6 +1150,34 @@ export default function VerseJarGame() {
           <p style={{ color: TOKENS.muted, fontSize: 10.5, textAlign: "center", opacity: 0.8 }}>
             the same one for whoever opens it today
           </p>
+
+          {(readCount > 0 || Object.keys(kept).length > 0) &&
+            (confirmReset ? (
+              <div className="flex items-center gap-3" style={{ marginTop: 2 }}>
+                <span style={{ color: TOKENS.muted, fontSize: 11 }}>Clear kept verses and progress?</span>
+                <button
+                  onClick={resetJar}
+                  aria-label="Confirm clearing the jar"
+                  style={{ color: "#C4184F", fontSize: 11, fontWeight: 700 }}
+                >
+                  Clear
+                </button>
+                <button
+                  onClick={() => setConfirmReset(false)}
+                  aria-label="Cancel clearing the jar"
+                  style={{ color: TOKENS.muted, fontSize: 11 }}
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmReset(true)}
+                style={{ color: TOKENS.muted, fontSize: 10.5, opacity: 0.65, marginTop: 2 }}
+              >
+                Start the jar over
+              </button>
+            ))}
         </div>
       )}
     </div>
