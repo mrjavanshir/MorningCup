@@ -1,12 +1,53 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, Share2, X } from "lucide-react";
+import { Check, Pause, Play, Share2, X } from "lucide-react";
 import { TOKENS, VERSE_JAR } from "./messages.js";
 
 const PAPER = "#F6EEDE";
 const JAR_W = 300;
 const JAR_H = 380;
 const COLS = 10;
+const READ_KEY = "verse-jar-read";
+const RECITER = "Alafasy_128kbps";
+
+// everyayah.com names each file by zero-padded surah + ayah, so a verse that
+// spans two ayahs is two files played back to back.
+function audioUrls(verse) {
+  return verse.ayahs.map(
+    (a) =>
+      `https://everyayah.com/data/${RECITER}/${String(verse.surah).padStart(3, "0")}${String(a).padStart(3, "0")}.mp3`
+  );
+}
+
+function loadRead() {
+  try {
+    const raw = localStorage.getItem(READ_KEY);
+    const ids = raw ? JSON.parse(raw) : [];
+    return Array.isArray(ids) ? Object.fromEntries(ids.map((id) => [id, true])) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveRead(read) {
+  try {
+    localStorage.setItem(READ_KEY, JSON.stringify(Object.keys(read)));
+  } catch {
+    /* private mode / storage full */
+  }
+}
+
+// Same calendar day gives the same verse to whoever opens it, so two people
+// can land on the same one without anything being shared between them. This has
+// to index ALL_PAPERS, not the laid-out papers — those get shuffled per mount,
+// which would hand out a different verse on every reload.
+function verseOfTheDayId() {
+  const d = new Date();
+  const key = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  return ALL_PAPERS[hash % ALL_PAPERS.length].id;
+}
 
 const ALL_PAPERS = (() => {
   const flat = [];
@@ -159,9 +200,11 @@ function GlassDressing() {
 export default function VerseJarGame() {
   const papers = useMemo(layoutPapers, []);
   const [openId, setOpenId] = useState(readSharedId);
-  const [read, setRead] = useState({});
+  const [read, setRead] = useState(loadRead);
   const [shared, setShared] = useState(false);
   const [lid, setLid] = useState(() => (readSharedId() ? "open" : "closed"));
+  const [playing, setPlaying] = useState(false);
+  const audioRef = useRef(null);
   const lidOpen = lid === "open";
 
   const open = openId ? papers.find((p) => p.id === openId) : null;
@@ -183,8 +226,48 @@ export default function VerseJarGame() {
     };
   }, [lidOpen, openId]);
 
+  const stopAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.onended = null;
+      audioRef.current = null;
+    }
+    setPlaying(false);
+  };
+
+  // Stop the recitation if the component goes away mid-playback.
+  useEffect(() => stopAudio, []);
+
+  const toggleAudio = () => {
+    if (playing) {
+      stopAudio();
+      return;
+    }
+    const urls = audioUrls(open);
+    let i = 0;
+    const el = new Audio(urls[0]);
+    audioRef.current = el;
+    el.onended = () => {
+      i += 1;
+      if (i < urls.length && audioRef.current === el) {
+        el.src = urls[i];
+        el.play().catch(stopAudio);
+      } else {
+        stopAudio();
+      }
+    };
+    el.onerror = stopAudio;
+    setPlaying(true);
+    el.play().catch(stopAudio);
+  };
+
   const putBack = () => {
-    setRead((prev) => ({ ...prev, [openId]: true }));
+    stopAudio();
+    setRead((prev) => {
+      const next = { ...prev, [openId]: true };
+      saveRead(next);
+      return next;
+    });
     setShared(false);
     setOpenId(null);
   };
@@ -221,6 +304,8 @@ export default function VerseJarGame() {
           animate={lidOpen ? { y: -14, x: 100, rotate: -26, opacity: 1 } : { y: 0, x: 0, rotate: 0, opacity: 1 }}
           transition={{ type: "spring", stiffness: 190, damping: 17 }}
           onClick={() => !lidOpen && setLid("open")}
+          role="button"
+          aria-label="Open the jar"
           style={{
             position: "relative",
             width: 150,
@@ -474,7 +559,7 @@ export default function VerseJarGame() {
                   position: "absolute",
                   left: -8,
                   right: -8,
-                  top: "38%",
+                  top: "20%",
                   transformOrigin: "top center",
                   background: `linear-gradient(180deg, ${PAPER} 0%, #EDE2CC 100%)`,
                   borderRadius: 10,
@@ -482,9 +567,30 @@ export default function VerseJarGame() {
                   boxShadow: "0 22px 48px rgba(0,0,0,0.62)",
                   padding: "22px 22px 18px",
                   zIndex: 9,
+                  // full ayahs run long (Ayat al-Kursi is ~550 chars), so the
+                  // paper scrolls rather than growing off the bottom of the screen
+                  maxHeight: "58vh",
+                  overflowY: "auto",
                 }}
               >
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.22 }}>
+                  {open.arabic && (
+                    <p
+                      dir="rtl"
+                      lang="ar"
+                      style={{
+                        color: "#2A1620",
+                        fontFamily: "'Amiri', serif",
+                        fontSize: 21,
+                        lineHeight: 2,
+                        textAlign: "center",
+                        marginBottom: 14,
+                      }}
+                    >
+                      {open.arabic}
+                    </p>
+                  )}
+                  <div style={{ width: 40, height: 1, background: `${open.color}44`, margin: "0 auto 14px" }} />
                   <p style={{ color: "#2A1620", fontFamily: "'Fraunces', serif", fontSize: 16.5, lineHeight: 1.6, textAlign: "center" }}>
                     {open.text}
                   </p>
@@ -501,25 +607,63 @@ export default function VerseJarGame() {
                   >
                     {open.ref}
                   </p>
+                  <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 16 }}>
+                    <button
+                      onClick={toggleAudio}
+                      aria-label={playing ? "Stop recitation" : "Play recitation"}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 7,
+                        background: playing ? `${open.color}1a` : "transparent",
+                        border: `1px solid ${open.color}55`,
+                        color: open.color,
+                        borderRadius: 9999,
+                        padding: "7px 16px",
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {playing ? <Pause size={13} /> : <Play size={13} />} {playing ? "Stop" : "Listen"}
+                    </button>
+                    <button
+                      onClick={share}
+                      aria-label="Share this verse"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 7,
+                        background: "transparent",
+                        border: `1px solid ${open.color}55`,
+                        color: open.color,
+                        borderRadius: 9999,
+                        padding: "7px 16px",
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {shared ? <Check size={13} /> : <Share2 size={13} />} {shared ? "Copied" : "Share"}
+                    </button>
+                  </div>
+                  {/* Dismiss lives on the paper itself: the paper is taller than the
+                      jar once the Arabic is in, so anything below it gets covered. */}
                   <button
-                    onClick={share}
-                    aria-label="Share this verse"
+                    onClick={putBack}
                     style={{
-                      margin: "16px auto 0",
                       display: "flex",
                       alignItems: "center",
-                      gap: 7,
+                      gap: 6,
+                      margin: "14px auto 0",
                       background: "transparent",
-                      border: `1px solid ${open.color}55`,
-                      color: open.color,
-                      borderRadius: 9999,
-                      padding: "7px 16px",
+                      border: "none",
+                      color: "#8C7355",
                       fontSize: 11.5,
-                      fontWeight: 700,
                       cursor: "pointer",
                     }}
                   >
-                    {shared ? <Check size={13} /> : <Share2 size={13} />} {shared ? "Copied" : "Share"}
+                    <X size={12} /> Put it back
                   </button>
                 </motion.div>
               </motion.div>
@@ -528,26 +672,36 @@ export default function VerseJarGame() {
         </AnimatePresence>
       </div>
 
-      {open ? (
-        <motion.button
-          onClick={putBack}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          whileTap={{ scale: 0.97 }}
-          style={{ color: TOKENS.muted, fontSize: 12.5 }}
-          className="flex items-center gap-1.5"
-        >
-          <X size={13} /> Put it back
-        </motion.button>
-      ) : (
-        <p style={{ color: TOKENS.muted, fontSize: 11.5 }}>
-          {!lidOpen
-            ? "Tap the cork to open it"
-            : readCount > 0
-              ? `${readCount} of ${papers.length} opened`
-              : `${papers.length} papers in the jar`}
-        </p>
+      {open ? null : (
+        <div className="flex flex-col items-center gap-2.5">
+          <p style={{ color: TOKENS.muted, fontSize: 11.5 }}>
+            {!lidOpen
+              ? "Tap the cork to open it"
+              : readCount > 0
+                ? `${readCount} of ${papers.length} opened`
+                : `${papers.length} papers in the jar`}
+          </p>
+          <motion.button
+            onClick={() => {
+              setLid("open");
+              setOpenId(verseOfTheDayId());
+            }}
+            whileTap={{ scale: 0.97 }}
+            style={{
+              color: TOKENS.gold,
+              fontSize: 11.5,
+              fontWeight: 700,
+              border: `1px solid ${TOKENS.gold}44`,
+              borderRadius: 9999,
+              padding: "6px 15px",
+            }}
+          >
+            Today's verse
+          </motion.button>
+          <p style={{ color: TOKENS.muted, fontSize: 10.5, textAlign: "center", opacity: 0.8 }}>
+            the same one for whoever opens it today
+          </p>
+        </div>
       )}
     </div>
   );
