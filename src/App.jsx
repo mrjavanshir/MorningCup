@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ArrowUpFromLine, BatteryCharging, Bird, Check, Eraser, Gem, Gift, Link2, ListChecks, Moon, MousePointerClick, NotebookPen, Scale, Scroll, Smile, Sparkles, Stamp, Sun, Sunrise, Sunset, VenetianMask, Zap } from "lucide-react";
+import { Sparkle, ArrowUpFromLine, BatteryCharging, Bird, Check, Eraser, Gem, Gift, Link2, ListChecks, Moon, MousePointerClick, NotebookPen, Scale, Scroll, Smile, Sparkles, Stamp, Sun, Sunrise, Sunset, VenetianMask, Zap } from "lucide-react";
 import { TOKENS } from "./messages.js";
 import SunGame from "./SunGame.jsx";
 import DaybreakGame from "./DaybreakGame.jsx";
@@ -19,6 +19,7 @@ import VerseJarGame from "./VerseJarGame.jsx";
 import CloseDayGame from "./CloseDayGame.jsx";
 import ThreeThingsGame from "./ThreeThingsGame.jsx";
 import HighlightsGame from "./HighlightsGame.jsx";
+import NamesGame from "./NamesGame.jsx";
 
 const GAMES = [
   { id: "sun", icon: Sunrise, title: "Sunrise", desc: "Tap to raise it." },
@@ -36,6 +37,7 @@ const GAMES = [
   { id: "mood", icon: Smile, title: "Mood Mirror", desc: "One tap, no explaining." },
   { id: "surprise", icon: Gift, title: "Surprise Box", desc: "No idea what's inside." },
   { id: "jar", icon: Scroll, title: "Verses Jar", desc: "Read me when…" },
+  { id: "names", icon: Sparkle, title: "The 99 Names", desc: "One at a time, or all of them." },
   { id: "close-day", icon: Eraser, title: "Close the Day", desc: "Dump it out, watch it go.", night: true },
   { id: "three-things", icon: NotebookPen, title: "Three Good Things", desc: "Log what went well today.", night: true },
   { id: "highlights", icon: Sunset, title: "Highlights", desc: "Both share the best bit.", night: true },
@@ -238,6 +240,7 @@ export default function App() {
             {route.id === "mood" && <MoodMirrorGame />}
             {route.id === "surprise" && <SurpriseBoxGame />}
             {route.id === "jar" && <VerseJarGame />}
+            {route.id === "names" && <NamesGame />}
             {route.id === "close-day" && <CloseDayGame />}
             {route.id === "three-things" && <ThreeThingsGame />}
             {route.id === "highlights" && <HighlightsGame />}
