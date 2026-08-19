@@ -100,6 +100,28 @@ export default {
 
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
 
+    // ---- shared-games config: one fixed record, world-readable, owner-writable ----
+    // Unlike collections this has a fixed key, because her hub has to find it
+    // with no link to go on. It never expires.
+    if (url.pathname === "/config") {
+      if (request.method === "GET") {
+        const stored = await env.STORE.get("config:shared");
+        return new Response(stored === null ? "{}" : stored, {
+          status: 200,
+          headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...cors },
+        });
+      }
+      if (request.method === "PUT") {
+        if (!env.OWNER_KEY || !keysMatch(request.headers.get("X-Write-Key") || "", env.OWNER_KEY)) {
+          return json({ error: "wrong write key" }, 403, cors);
+        }
+        const body = await readJsonBody(request);
+        if (body.error) return json({ error: body.error }, body.status, cors);
+        await env.STORE.put("config:shared", body.raw);
+        return new Response(null, { status: 204, headers: cors });
+      }
+    }
+
     // ---- collections: mutable, and writable only with the key ----
     const collection = url.pathname.match(/^\/c\/([a-z0-9]+)$/);
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Sparkle, ArrowUpFromLine, Check, Eraser, Gift, Link2, Moon, NotebookPen, Scale, Scroll, Stamp, Sun, Sunrise, Sunset } from "lucide-react";
 import { TOKENS } from "./messages.js";
 import SunGame from "./SunGame.jsx";
@@ -11,6 +11,8 @@ import CloseDayGame from "./CloseDayGame.jsx";
 import ThreeThingsGame from "./ThreeThingsGame.jsx";
 import HighlightsGame from "./HighlightsGame.jsx";
 import NamesGame from "./NamesGame.jsx";
+import SharedSettings from "./SharedSettings.jsx";
+import { cachedConfig, clearOwner, fetchSharedConfig, readOwner } from "./owner.js";
 
 // `shared` controls only what the hub LISTS. Every game stays reachable at its
 // own /games/<id> URL whatever this says, so links already sent keep working.
@@ -26,31 +28,6 @@ const GAMES = [
   { id: "three-things", icon: NotebookPen, title: "Three Good Things", desc: "Log what went well today.", night: true, shared: true },
   { id: "highlights", icon: Sunset, title: "Highlights", desc: "Both share the best bit.", night: true, shared: true },
 ];
-
-// Visiting /games?owner=<this> once marks the device as yours; after that the
-// hub lists everything. This is obscurity, not security — a static site cannot
-// keep a secret, so anyone reading the bundle could find it. It is only meant
-// to keep the full list out of the way of someone casually opening the hub.
-const OWNER_KEY = "q7m2-havaland-4tx9";
-const OWNER_FLAG = "is-owner";
-
-function readOwner() {
-  try {
-    const param = new URLSearchParams(window.location.search).get("owner");
-    if (param === OWNER_KEY) {
-      localStorage.setItem(OWNER_FLAG, "1");
-      // Drop the key from the address bar so it is not left in history or
-      // copied by accident when sharing the hub link.
-      const url = new URL(window.location.href);
-      url.searchParams.delete("owner");
-      window.history.replaceState({}, "", url);
-      return true;
-    }
-    return localStorage.getItem(OWNER_FLAG) === "1";
-  } catch {
-    return false;
-  }
-}
 
 function parseRoute() {
   const path = window.location.pathname.slice(import.meta.env.BASE_URL.length).replace(/\/+$/, "");
@@ -82,15 +59,26 @@ export default function App() {
   const [lockHour] = useState(nightLockHour);
   const [copiedId, setCopiedId] = useState(null);
   const [isOwner, setIsOwner] = useState(readOwner);
+  const [showSettings, setShowSettings] = useState(false);
+  // Start from whatever this device last saw so the list does not flicker or
+  // sit empty offline, then refresh from the Worker.
+  const [config, setConfig] = useState(cachedConfig);
 
-  const visibleGames = isOwner ? GAMES : GAMES.filter((g) => g.shared);
+  useEffect(() => {
+    let cancelled = false;
+    fetchSharedConfig().then((c) => {
+      if (!cancelled && c) setConfig(c);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const isShared = (g) => (config && g.id in config ? config[g.id] : g.shared !== false);
+  const visibleGames = isOwner ? GAMES : GAMES.filter(isShared);
 
   const lockAgain = () => {
-    try {
-      localStorage.removeItem(OWNER_FLAG);
-    } catch {
-      /* private mode */
-    }
+    clearOwner();
     setIsOwner(false);
   };
 
@@ -159,6 +147,8 @@ export default function App() {
               This one opens after {String(lockHour).padStart(2, "0")}:00. Come back tonight.
             </p>
           </div>
+        ) : showSettings && isOwner ? (
+          <SharedSettings games={GAMES} onBack={() => setShowSettings(false)} />
         ) : route.view === "hub" ? (
           <>
             {isOwner && (
@@ -241,10 +231,16 @@ export default function App() {
                   YOUR VIEW · {GAMES.length} games
                 </span>
                 <button
+                  onClick={() => setShowSettings(true)}
+                  style={{ color: TOKENS.gold, fontSize: 10.5, fontWeight: 700 }}
+                >
+                  what she sees
+                </button>
+                <button
                   onClick={lockAgain}
                   style={{ color: TOKENS.muted, fontSize: 10.5, opacity: 0.75 }}
                 >
-                  see it as she does
+                  preview hers
                 </button>
               </div>
             )}

@@ -6,6 +6,11 @@ compatibility_date = "2026-08-19"
 # `npm run dev` works whichever port Vite lands on — see isLocalhost in index.js.
 [vars]
 ALLOWED_ORIGINS = "https://mrjavanshir.github.io"
+# Gate on writing the shared-games config. The page has to send this, and a
+# static site cannot hide anything, so it is readable in the bundle either way —
+# it stops idle tampering, not a determined person. Keep it equal to OWNER_KEY
+# in src/owner.js.
+OWNER_KEY = "q7m2-havaland-4tx9"
 
 # Replace `id` with the real namespace id printed by:
 #   npx wrangler kv namespace create STORE
