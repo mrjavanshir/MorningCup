@@ -18,6 +18,14 @@ const LANGS = [
   { id: "en.sahih", label: "English", note: "Saheeh International" },
   { id: "az.mammadaliyev", label: "Azərbaycan", note: "Məmmədəliyev & Bünyadov" },
 ];
+// Only the surah chrome is localised — the translation itself comes from the
+// chosen edition, and the transliterated name ("Al-Alaq") reads the same either way.
+const STRINGS = {
+  en: { ayahs: "ayahs", Meccan: "Meccan", Medinan: "Medinan", revealed: "revealed", read: "you've read" },
+  az: { ayahs: "ayə", Meccan: "Məkkə", Medinan: "Mədinə", revealed: "nazil sırası", read: "oxuduğun" },
+};
+const langKey = (id) => (id.startsWith("az") ? "az" : "en");
+
 const LANG_KEY = "quran-lang";
 const ORDER_KEY = "quran-order";
 
@@ -70,6 +78,9 @@ export default function QuranGame({ isOwner }) {
   const [playing, setPlaying] = useState(null);
   const [shareVerse, setShareVerse] = useState(null);
   const audioRef = useRef(null);
+
+  const L = langKey(lang);
+  const t = STRINGS[L];
 
   const marks = doc.marks || {};
   const readAll = doc.read || {};
@@ -174,7 +185,7 @@ export default function QuranGame({ isOwner }) {
       arabic: a.ar,
       text: a.tr,
       ref: `${s.en} ${openSurah}:${a.n}`,
-      label: s.meaning,
+      label: s.meaning[L],
     });
   };
 
@@ -201,8 +212,8 @@ export default function QuranGame({ isOwner }) {
           <div style={{ textAlign: "center" }}>
             <p dir="rtl" lang="ar" style={{ color: TOKENS.gold, fontFamily: "'Amiri', serif", fontSize: 22 }}>{s.ar}</p>
             <p style={{ color: TOKENS.muted, fontSize: 11 }}>
-              {s.en} · {s.ayahs} ayahs · {s.place} · revealed {s.order}
-              {readHere > 0 && ` · you've read ${readHere}`}
+              {s.en} · {s.meaning[L]} · {s.ayahs} {t.ayahs} · {t[s.place]} · {t.revealed} {s.order}
+              {readHere > 0 && ` · ${t.read} ${readHere}`}
             </p>
           </div>
           <button onClick={() => setOpenSurah(openSurah < 114 ? openSurah + 1 : null)} aria-label="Next surah" style={{ color: TOKENS.muted, padding: 6 }}>
