@@ -14,8 +14,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["sun.svg", "apple-touch-icon.png"],
       manifest: {
-        name: "Hello, Ganira",
-        short_name: "Ganira",
+        name: "Nook",
+        short_name: "Nook",
         description: "A little something, whenever you need it.",
         // The site root renders deliberately blank, so an installed app has to
         // start at the hub or it opens to an empty screen.

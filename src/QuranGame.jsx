@@ -175,6 +175,19 @@ export default function QuranGame({ isOwner }) {
     };
   }, [openSurah, lang]);
 
+  // Opening a surah you are part-way through should land where you stopped,
+  // not at the top. Keyed on `ayahs`, which is nulled then refilled on every
+  // open — so it runs once per load, and marking an ayah does not re-scroll.
+  useEffect(() => {
+    if (!ayahs || openSurah === null) return;
+    const bookmark = marks[me];
+    const resumeAt =
+      bookmark && bookmark.surah === openSurah ? bookmark.ayah : (readAll[me] || {})[openSurah] || 0;
+    if (resumeAt < 2) return; // the first ayah is already at the top
+    const el = document.querySelector(`[data-ayah="${resumeAt}"]`);
+    if (el) el.scrollIntoView({ block: "center" });
+  }, [ayahs]);
+
   const pickLang = (id) => {
     setLang(id);
     try {
@@ -286,6 +299,7 @@ export default function QuranGame({ isOwner }) {
             return (
               <div
                 key={a.n}
+                data-ayah={a.n}
                 style={{
                   width: "100%",
                   background: `linear-gradient(180deg, ${PAPER} 0%, #EDE2CC 100%)`,
