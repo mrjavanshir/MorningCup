@@ -12,18 +12,45 @@ import ThreeThingsGame from "./ThreeThingsGame.jsx";
 import HighlightsGame from "./HighlightsGame.jsx";
 import NamesGame from "./NamesGame.jsx";
 
+// `shared` controls only what the hub LISTS. Every game stays reachable at its
+// own /games/<id> URL whatever this says, so links already sent keep working.
 const GAMES = [
-  { id: "sun", icon: Sunrise, title: "Sunrise", desc: "Tap to raise it." },
-  { id: "daybreak", icon: ArrowUpFromLine, title: "Daybreak", desc: "Drag to bring up the sun." },
-  { id: "agreement", icon: Stamp, title: "Agreement", desc: "Stamp it to make it official." },
-  { id: "this-or-that", icon: Scale, title: "This or That", desc: "Pick a side, compare picks." },
-  { id: "surprise", icon: Gift, title: "Surprise Box", desc: "No idea what's inside." },
-  { id: "jar", icon: Scroll, title: "Verses Jar", desc: "Read me when…" },
-  { id: "names", icon: Sparkle, title: "The 99 Names", desc: "One at a time, or all of them." },
-  { id: "close-day", icon: Eraser, title: "Close the Day", desc: "Dump it out, watch it go.", night: true },
-  { id: "three-things", icon: NotebookPen, title: "Three Good Things", desc: "Log what went well today.", night: true },
-  { id: "highlights", icon: Sunset, title: "Highlights", desc: "Both share the best bit.", night: true },
+  { id: "sun", icon: Sunrise, title: "Sunrise", desc: "Tap to raise it.", shared: true },
+  { id: "daybreak", icon: ArrowUpFromLine, title: "Daybreak", desc: "Drag to bring up the sun.", shared: true },
+  { id: "agreement", icon: Stamp, title: "Agreement", desc: "Stamp it to make it official.", shared: true },
+  { id: "this-or-that", icon: Scale, title: "This or That", desc: "Pick a side, compare picks.", shared: true },
+  { id: "surprise", icon: Gift, title: "Surprise Box", desc: "No idea what's inside.", shared: true },
+  { id: "jar", icon: Scroll, title: "Verses Jar", desc: "Read me when…", shared: true },
+  { id: "names", icon: Sparkle, title: "The 99 Names", desc: "One at a time, or all of them.", shared: true },
+  { id: "close-day", icon: Eraser, title: "Close the Day", desc: "Dump it out, watch it go.", night: true, shared: true },
+  { id: "three-things", icon: NotebookPen, title: "Three Good Things", desc: "Log what went well today.", night: true, shared: true },
+  { id: "highlights", icon: Sunset, title: "Highlights", desc: "Both share the best bit.", night: true, shared: true },
 ];
+
+// Visiting /games?owner=<this> once marks the device as yours; after that the
+// hub lists everything. This is obscurity, not security — a static site cannot
+// keep a secret, so anyone reading the bundle could find it. It is only meant
+// to keep the full list out of the way of someone casually opening the hub.
+const OWNER_KEY = "q7m2-havaland-4tx9";
+const OWNER_FLAG = "is-owner";
+
+function readOwner() {
+  try {
+    const param = new URLSearchParams(window.location.search).get("owner");
+    if (param === OWNER_KEY) {
+      localStorage.setItem(OWNER_FLAG, "1");
+      // Drop the key from the address bar so it is not left in history or
+      // copied by accident when sharing the hub link.
+      const url = new URL(window.location.href);
+      url.searchParams.delete("owner");
+      window.history.replaceState({}, "", url);
+      return true;
+    }
+    return localStorage.getItem(OWNER_FLAG) === "1";
+  } catch {
+    return false;
+  }
+}
 
 function parseRoute() {
   const path = window.location.pathname.slice(import.meta.env.BASE_URL.length).replace(/\/+$/, "");
@@ -54,6 +81,18 @@ export default function App() {
   const [route, setRoute] = useState(parseRoute);
   const [lockHour] = useState(nightLockHour);
   const [copiedId, setCopiedId] = useState(null);
+  const [isOwner, setIsOwner] = useState(readOwner);
+
+  const visibleGames = isOwner ? GAMES : GAMES.filter((g) => g.shared);
+
+  const lockAgain = () => {
+    try {
+      localStorage.removeItem(OWNER_FLAG);
+    } catch {
+      /* private mode */
+    }
+    setIsOwner(false);
+  };
 
   const copyLink = async (id) => {
     try {
@@ -122,13 +161,15 @@ export default function App() {
           </div>
         ) : route.view === "hub" ? (
           <>
-            <p style={{ color: TOKENS.muted, fontSize: 11.5, textAlign: "center" }} className="mb-4">
-              Each game has its own link — whoever opens it only sees that one game.
-            </p>
+            {isOwner && (
+              <p style={{ color: TOKENS.muted, fontSize: 11.5, textAlign: "center" }} className="mb-4">
+                Each game has its own link — whoever opens it only sees that one game.
+              </p>
+            )}
             <div className="w-full flex flex-col gap-3">
-              {GAMES.map((g, i) => {
+              {visibleGames.map((g, i) => {
                 const Icon = g.icon;
-                const startsGroup = i === 0 || GAMES[i - 1].night !== g.night;
+                const startsGroup = i === 0 || visibleGames[i - 1].night !== g.night;
                 return (
                   <React.Fragment key={g.id}>
                     {startsGroup && (
@@ -179,6 +220,7 @@ export default function App() {
                         <div style={{ color: TOKENS.muted, fontSize: 12.5, marginTop: 2 }}>{g.desc}</div>
                       </div>
                     </button>
+                    {isOwner && (
                     <button
                       onClick={() => copyLink(g.id)}
                       aria-label={`Copy the ${g.title} link`}
@@ -187,11 +229,25 @@ export default function App() {
                     >
                       {copiedId === g.id ? <Check size={15} color={TOKENS.gold} /> : <Link2 size={15} />}
                     </button>
+                    )}
                   </div>
                   </React.Fragment>
                 );
               })}
             </div>
+            {isOwner && (
+              <div className="flex items-center gap-2 mt-5">
+                <span style={{ color: TOKENS.gold, fontSize: 10.5, fontWeight: 700, letterSpacing: 1.2 }}>
+                  YOUR VIEW · {GAMES.length} games
+                </span>
+                <button
+                  onClick={lockAgain}
+                  style={{ color: TOKENS.muted, fontSize: 10.5, opacity: 0.75 }}
+                >
+                  see it as she does
+                </button>
+              </div>
+            )}
           </>
         ) : (
           <>
