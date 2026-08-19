@@ -24,7 +24,12 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      # Optional: set a repository variable VITE_STORE_URL to the deployed
+      # Worker URL to turn on short links. Unset is fine — the games fall back
+      # to packing their state into the URL.
       - run: npm run build
+        env:
+          VITE_STORE_URL: ${{ vars.VITE_STORE_URL }}
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:

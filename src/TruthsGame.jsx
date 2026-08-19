@@ -1,35 +1,25 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, Link2, X } from "lucide-react";
 import { TOKENS } from "./messages.js";
+import { loadState, saveState } from "./store.js";
 
 const PARTY_A = "Javanshir";
 const PARTY_B = "Ganira";
 const LIE_COLOR = "#C4184F";
 
-function encodeRound(statements, lieIndex) {
-  return btoa(unescape(encodeURIComponent(JSON.stringify([statements, lieIndex]))));
+function validRound(value) {
+  if (!Array.isArray(value) || value.length !== 2) return null;
+  const [statements, lieIndex] = value;
+  if (!Array.isArray(statements) || statements.length !== 3) return null;
+  if (statements.some((s) => typeof s !== "string" || !s.trim())) return null;
+  if (typeof lieIndex !== "number" || lieIndex < 0 || lieIndex > 2) return null;
+  return { statements, lieIndex };
 }
 
-function decodeRound(raw) {
-  try {
-    const [statements, lieIndex] = JSON.parse(decodeURIComponent(escape(atob(raw))));
-    if (!Array.isArray(statements) || statements.length !== 3) return null;
-    if (statements.some((s) => typeof s !== "string" || !s.trim())) return null;
-    if (typeof lieIndex !== "number" || lieIndex < 0 || lieIndex > 2) return null;
-    return { statements, lieIndex };
-  } catch {
-    return null;
-  }
-}
-
-function readParams() {
-  const params = new URLSearchParams(window.location.search);
-  const raw = params.get("a");
-  const round = raw ? decodeRound(raw) : null;
-  const g = params.get("g");
-  const guess = round && g !== null && /^[0-2]$/.test(g) ? Number(g) : null;
-  return { round, guess, raw };
+function guessFromUrl(hasRound) {
+  const g = new URLSearchParams(window.location.search).get("g");
+  return hasRound && g !== null && /^[0-2]$/.test(g) ? Number(g) : null;
 }
 
 function StatementCard({ text, index, state, onClick, disabled }) {
@@ -86,16 +76,39 @@ function StatementCard({ text, index, state, onClick, disabled }) {
 }
 
 export default function TruthsGame() {
-  const [{ round, guess: urlGuess, raw }] = useState(readParams);
-  const isResult = round !== null && urlGuess !== null;
-  const isGuessing = round !== null && urlGuess === null;
+  // The round may live behind a short id, so opening a link is now a fetch.
+  const [loading, setLoading] = useState(() => /[?&][ai]=/.test(window.location.search));
+  const [round, setRound] = useState(null);
+  const [token, setToken] = useState(null); // { param, value } — reused for the reply link
+  const [urlGuess, setUrlGuess] = useState(null);
 
   const [statements, setStatements] = useState(["", "", ""]);
   const [lieIndex, setLieIndex] = useState(null);
   const [sent, setSent] = useState(false);
   const [copied, setCopied] = useState(false);
-
   const [guess, setGuess] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!loading) return undefined;
+    (async () => {
+      const loaded = await loadState();
+      if (cancelled) return;
+      const parsed = loaded ? validRound(loaded.data) : null;
+      if (parsed) {
+        setRound(parsed);
+        setToken({ param: loaded.param, value: loaded.value });
+        setUrlGuess(guessFromUrl(true));
+      }
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loading]);
+
+  const isResult = round !== null && urlGuess !== null;
+  const isGuessing = round !== null && urlGuess === null;
 
   const ready = statements.every((s) => s.trim()) && lieIndex !== null;
 
@@ -113,12 +126,30 @@ export default function TruthsGame() {
     }
   };
 
+  const copyRoundLink = async () => {
+    const { param, value } = await saveState([statements.map((s) => s.trim()), lieIndex]);
+    await copyLink(`${param}=${value}`);
+  };
+
+  const copyResultLink = async () => {
+    if (!token) return;
+    await copyLink(`${token.param}=${token.value}&g=${guess}`);
+  };
+
   const cardState = (i, revealedGuess) => {
     if (revealedGuess === null) return "idle";
     if (i === round.lieIndex) return "lie";
     if (i === revealedGuess) return "picked";
     return "truth";
   };
+
+  if (loading) {
+    return (
+      <p style={{ color: TOKENS.muted, fontSize: 13, textAlign: "center" }} className="mt-6">
+        Opening…
+      </p>
+    );
+  }
 
   // --- Author sees how she did ---
   if (isResult) {
@@ -201,7 +232,7 @@ export default function TruthsGame() {
                 {correct ? "Correct — that was the lie )" : "Nope, that one was true."}
               </motion.p>
               <motion.button
-                onClick={() => copyLink(`a=${raw}&g=${guess}`)}
+                onClick={copyResultLink}
                 whileTap={{ scale: 0.97 }}
                 style={{ background: TOKENS.gold, color: TOKENS.bgDeep, fontWeight: 700 }}
                 className="w-full h-12 rounded-full flex items-center justify-center gap-2"
@@ -223,7 +254,7 @@ export default function TruthsGame() {
           Round locked in — send the link and see if she can spot the lie.
         </p>
         <motion.button
-          onClick={() => copyLink(`a=${encodeRound(statements.map((s) => s.trim()), lieIndex)}`)}
+          onClick={copyRoundLink}
           whileTap={{ scale: 0.97 }}
           style={{ background: TOKENS.gold, color: TOKENS.bgDeep, fontWeight: 700 }}
           className="w-full h-12 rounded-full flex items-center justify-center gap-2"
