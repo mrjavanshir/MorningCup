@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { BookMarked, BookOpen, Sparkle, ArrowUpFromLine, Check, Eraser, Gift, Link2, Moon, NotebookPen, Scale, Scroll, Stamp, Sun, Sunrise, Sunset } from "lucide-react";
+import { BookMarked, BookOpen, Sparkle, ArrowUpFromLine, Cake, Check, Eraser, Gift, Link2, Moon, NotebookPen, Scale, Scroll, Stamp, Sun, Sunrise, Sunset } from "lucide-react";
 import { TOKENS, alpha } from "./messages.js";
 import SunGame from "./SunGame.jsx";
 import DaybreakGame from "./DaybreakGame.jsx";
@@ -14,6 +14,7 @@ import NamesGame from "./NamesGame.jsx";
 import SharedSettings from "./SharedSettings.jsx";
 import KhatmGame from "./KhatmGame.jsx";
 import QuranGame from "./QuranGame.jsx";
+import BirthdayGiftCard from "./BirthdayGiftCard.jsx";
 import { cachedViews, fetchViews, ME, readAsUser, readSession, setAsUser, signOut, unlockAdmin } from "./owner.js";
 import { applyTheme, currentTheme } from "./theme.js";
 
@@ -32,6 +33,7 @@ const GAMES = [
   { id: "names", icon: Sparkle, title: "The 99 Names", desc: "One at a time, or all of them.", shared: true },
   { id: "khatm", icon: BookOpen, title: "Khatm Together", desc: "Thirty juz, between the two of you.", shared: true },
   { id: "quran", icon: BookMarked, title: "Read the Qur'an", desc: "All 114, with where you each are.", shared: true, bare: true },
+  { id: "birthday", icon: Cake, title: "Birthday Card", desc: "Open the box.", shared: false },
   { id: "close-day", icon: Eraser, title: "Close the Day", desc: "Dump it out, watch it go.", night: true, shared: true },
   { id: "three-things", icon: NotebookPen, title: "Three Good Things", desc: "Log what went well today.", night: true, shared: true },
   { id: "highlights", icon: Sunset, title: "Highlights", desc: "Both share the best bit.", night: true, shared: true },
@@ -172,6 +174,11 @@ export default function App() {
   if (route.view === "blank") {
     return <div style={{ background: TOKENS.bgDeep, minHeight: "100vh" }} />;
   }
+
+  // The card is a whole screen of its own — its own background, its own fonts,
+  // nothing above it. Returned before the app chrome rather than inside it: a
+  // greeting and a theme toggle framing a gift would undo it.
+  if (route.view === "game" && route.id === "birthday") return <BirthdayGiftCard admin={asAdmin} />;
 
   const activeGame = route.view === "game" ? GAMES.find((g) => g.id === route.id) : null;
   const isNight = !!activeGame?.night;

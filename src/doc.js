@@ -45,13 +45,17 @@ export async function readDoc(name) {
   }
 }
 
-async function writeDoc(name, value) {
+// `keepalive` lets a caller fire this from a pagehide/visibilitychange
+// handler and have a real chance of it landing after the tab is gone —
+// without it, the browser can and does abort the request mid-flight.
+export async function writeDoc(name, value, { keepalive = false } = {}) {
   if (!STORE_URL) return false;
   try {
     const res = await fetch(`${STORE_URL}/doc/${name}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "X-Write-Key": OWNER_KEY },
       body: JSON.stringify(value),
+      keepalive,
     });
     if (res.ok) cache(name, value);
     return res.ok;

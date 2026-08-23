@@ -36,11 +36,45 @@ const legacy = ["sun"].filter((id) => ids.includes(id));
 
 const html = fs.readFileSync(path.join(dist, "index.html"), "utf8");
 
+/**
+ * The birthday card is a one-off link sent to one person, not an entry point
+ * into "Nook" — she should never see that name, get offered an install of an
+ * app that turns out to hold a dozen unrelated games, or land on the hub if
+ * she ever taps a home-screen icon she added out of curiosity. So its HTML
+ * strips every PWA/identity signal the rest of the site intentionally has:
+ * the manifest link and the service-worker registration script (so nothing
+ * about this visit ever gets installed or cached as "Nook"), the
+ * apple-mobile-web-app-* meta that makes "Add to Home Screen" open full-
+ * screen under that name, and the shared favicon/apple-touch-icon. Title and
+ * description are swapped for something that stands on its own.
+ */
+function stripPwa(html) {
+  return html
+    .replace(/<link rel="manifest"[^>]*>\s*/, "")
+    .replace(/<script id="vite-plugin-pwa:register-sw"[^>]*><\/script>\s*/, "")
+    .replace(/<meta name="apple-mobile-web-app-capable"[^>]*\/>\s*\n?/, "")
+    .replace(/<meta name="apple-mobile-web-app-status-bar-style"[^>]*\/>\s*\n?/, "")
+    .replace(/<meta name="apple-mobile-web-app-title"[^>]*\/>\s*\n?/, "")
+    .replace(/<meta name="mobile-web-app-capable"[^>]*\/>\s*\n?/, "")
+    .replace(/<link rel="apple-touch-icon"[^>]*>\s*\n?/, "")
+    .replace(
+      /<link rel="icon"[^>]*>/,
+      `<link rel="icon" href="data:image/svg+xml,${encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="82" font-size="80">🎂</text></svg>',
+      )}" />`,
+    )
+    .replace(/<meta name="description"[^>]*\/>/, '<meta name="description" content="A little birthday surprise." />')
+    .replace(/<title>[^<]*<\/title>/, "<title>Happy Birthday</title>");
+}
+
+const birthdayHtml = ids.includes("birthday") ? stripPwa(html) : null;
+
 const routes = ["games", ...ids.map((id) => `games/${id}`), ...legacy];
 for (const route of routes) {
   const dir = path.join(dist, route);
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, "index.html"), html);
+  const body = route === "games/birthday" && birthdayHtml ? birthdayHtml : html;
+  fs.writeFileSync(path.join(dir, "index.html"), body);
 }
 
 console.log(`prerender: wrote ${routes.length} routes (${ids.length} games + hub + ${legacy.length} legacy)`);
