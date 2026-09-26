@@ -1,10 +1,44 @@
 import React, { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronLeft, ChevronRight, Grid3x3, Shuffle, X } from "lucide-react";
+import { BookOpenText, ChevronLeft, ChevronRight, Grid3x3, Shuffle, X } from "lucide-react";
 import { TOKENS, alpha } from "./messages.js";
 import { NAMES } from "./names.js";
+import { NAMES_AZ } from "./namesAz.js";
 
 const SEEN_KEY = "names-seen";
+const LANG_KEY = "names-lang";
+const MORE_KEY = "names-more";
+
+// Only Azerbaijani has the longer explanation; English keeps the short meaning.
+const STRINGS = {
+  en: {
+    title: "The ninety-nine Names", hint: "Swipe, or tap the grid for all of them",
+    all: "All ninety-nine", opened: (n, total) => `${n} of ${total} opened`, back: "Back",
+    prev: "Previous name", next: "Next name", random: "Random name", grid: "Show all names",
+  },
+  az: {
+    title: "Allahın doxsan doqquz adı", hint: "Sürüşdür, ya da hamısı üçün cədvələ toxun",
+    all: "Doxsan doqquzu da", opened: (n, total) => `${total} addan ${n} açılıb`, back: "Geri",
+    prev: "Əvvəlki ad", next: "Növbəti ad", random: "Təsadüfi ad", grid: "Bütün adları göstər",
+    more: "Ətraflı izah", less: "İzahı gizlət",
+  },
+};
+
+function stored(key, fallback) {
+  try {
+    return localStorage.getItem(key) || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function store(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* private mode */
+  }
+}
 
 function loadSeen() {
   try {
@@ -44,8 +78,47 @@ export default function NamesGame() {
   const [dir, setDir] = useState(0);
   const [seen, setSeen] = useState(loadSeen);
   const [showIndex, setShowIndex] = useState(false);
+  const [lang, setLang] = useState(() => (stored(LANG_KEY, "en") === "az" ? "az" : "en"));
+  // Left open, the explanation follows you from name to name.
+  const [showMore, setShowMore] = useState(() => stored(MORE_KEY, "") === "1");
 
   const name = NAMES[index];
+  const az = NAMES_AZ[index];
+  const t = STRINGS[lang];
+  const label = lang === "az" ? az.name : name.tr;
+  const meaning = lang === "az" ? az.meaning : name.meaning;
+
+  const pickLang = (id) => {
+    setLang(id);
+    store(LANG_KEY, id);
+  };
+  const toggleMore = () => {
+    setShowMore((v) => {
+      store(MORE_KEY, v ? "" : "1");
+      return !v;
+    });
+  };
+
+  const langToggle = (
+    <div className="flex gap-1.5 mb-4">
+      {[["en", "English"], ["az", "Azərbaycan"]].map(([id, text]) => (
+        <button
+          key={id}
+          onClick={() => pickLang(id)}
+          style={{
+            fontSize: 10.5,
+            fontWeight: 700,
+            padding: "5px 11px",
+            borderRadius: 9999,
+            border: `1px solid ${lang === id ? alpha(TOKENS.gold, "66") : TOKENS.line}`,
+            color: lang === id ? TOKENS.gold : TOKENS.muted,
+          }}
+        >
+          {text}
+        </button>
+      ))}
+    </div>
+  );
 
   useEffect(() => {
     setSeen((prev) => {
@@ -78,10 +151,10 @@ export default function NamesGame() {
     return (
       <div className="w-full flex flex-col items-center">
         <p style={{ color: TOKENS.muted, fontSize: 13, textAlign: "center" }} className="mb-1">
-          All ninety-nine
+          {t.all}
         </p>
         <p style={{ color: TOKENS.muted, fontSize: 11.5, textAlign: "center" }} className="mb-5">
-          {seen.size} of {NAMES.length} opened
+          {t.opened(seen.size, NAMES.length)}
         </p>
         <div
           style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(58px, 1fr))", gap: 7, width: "100%" }}
@@ -92,7 +165,7 @@ export default function NamesGame() {
               key={nm.n}
               onClick={() => jump(i)}
               whileTap={{ scale: 0.94 }}
-              aria-label={`${nm.n}. ${nm.tr}`}
+              aria-label={`${nm.n}. ${lang === "az" ? NAMES_AZ[i].name : nm.tr}`}
               style={{
                 aspectRatio: "1",
                 borderRadius: 10,
@@ -117,7 +190,7 @@ export default function NamesGame() {
           style={{ color: TOKENS.muted, fontSize: 12.5 }}
           className="flex items-center gap-1.5"
         >
-          <X size={13} /> Back
+          <X size={13} /> {t.back}
         </button>
       </div>
     );
@@ -126,11 +199,12 @@ export default function NamesGame() {
   return (
     <div className="w-full flex flex-col items-center">
       <p style={{ color: TOKENS.muted, fontSize: 13, textAlign: "center" }} className="mb-1">
-        The ninety-nine Names
+        {t.title}
       </p>
-      <p style={{ color: TOKENS.muted, fontSize: 11.5, textAlign: "center" }} className="mb-6">
-        Swipe, or tap the grid for all of them
+      <p style={{ color: TOKENS.muted, fontSize: 11.5, textAlign: "center" }} className="mb-3">
+        {t.hint}
       </p>
+      {langToggle}
 
       <div style={{ position: "relative", width: "100%", height: 300, marginBottom: 18 }}>
         <AnimatePresence initial={false} custom={dir} mode="popLayout">
@@ -205,7 +279,7 @@ export default function NamesGame() {
                 marginBottom: 8,
               }}
             >
-              {name.tr}
+              {label}
             </p>
             <p
               style={{
@@ -216,7 +290,7 @@ export default function NamesGame() {
                 textAlign: "center",
               }}
             >
-              {name.meaning}
+              {meaning}
             </p>
           </motion.div>
         </AnimatePresence>
@@ -226,7 +300,7 @@ export default function NamesGame() {
         <motion.button
           onClick={() => go(-1)}
           whileTap={{ scale: 0.94 }}
-          aria-label="Previous name"
+          aria-label={t.prev}
           style={{
             width: 42,
             height: 42,
@@ -243,7 +317,7 @@ export default function NamesGame() {
         <motion.button
           onClick={() => setShowIndex(true)}
           whileTap={{ scale: 0.94 }}
-          aria-label="Show all names"
+          aria-label={t.grid}
           style={{
             height: 42,
             padding: "0 16px",
@@ -262,7 +336,7 @@ export default function NamesGame() {
         <motion.button
           onClick={random}
           whileTap={{ scale: 0.94 }}
-          aria-label="Random name"
+          aria-label={t.random}
           style={{
             width: 42,
             height: 42,
@@ -279,7 +353,7 @@ export default function NamesGame() {
         <motion.button
           onClick={() => go(1)}
           whileTap={{ scale: 0.94 }}
-          aria-label="Next name"
+          aria-label={t.next}
           style={{
             width: 42,
             height: 42,
@@ -294,6 +368,42 @@ export default function NamesGame() {
           <ChevronRight size={17} />
         </motion.button>
       </div>
+
+      {lang === "az" && (
+        <div className="w-full flex flex-col items-center mt-5">
+          <button
+            onClick={toggleMore}
+            aria-expanded={showMore}
+            style={{ color: showMore ? TOKENS.gold : TOKENS.muted, fontSize: 12, fontWeight: 700 }}
+            className="flex items-center gap-1.5"
+          >
+            <BookOpenText size={14} /> {showMore ? t.less : t.more}
+          </button>
+          {showMore && (
+            <motion.div
+              key={name.n}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25 }}
+              style={{
+                width: "100%",
+                marginTop: 12,
+                background: `linear-gradient(160deg, ${TOKENS.bgCard}, ${TOKENS.bgCardEdge})`,
+                border: `1px solid ${TOKENS.line}`,
+                borderRadius: 14,
+                padding: "14px 16px",
+              }}
+            >
+              <p style={{ color: TOKENS.gold, fontSize: 11, fontWeight: 700, letterSpacing: 0.6, marginBottom: 6 }}>
+                {az.name}
+              </p>
+              <p style={{ color: TOKENS.cream, fontFamily: "'Fraunces', serif", fontSize: 14, lineHeight: 1.6 }}>
+                {az.about}
+              </p>
+            </motion.div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
