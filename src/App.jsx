@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { BookMarked, BookOpen, Sparkle, ArrowUpFromLine, Cake, Check, Eraser, Gift, Link2, Moon, NotebookPen, Scale, Scroll, Stamp, Sun, Sunrise, Sunset } from "lucide-react";
 import { TOKENS, alpha } from "./messages.js";
 import SunGame from "./SunGame.jsx";
@@ -15,7 +15,9 @@ import SharedSettings from "./SharedSettings.jsx";
 import KhatmGame from "./KhatmGame.jsx";
 import Quran from "./Quran.jsx";
 import BirthdayGiftCard from "./BirthdayGiftCard.jsx";
-import { cachedViews, fetchViews, ME, readAsUser, readSession, setAsUser, signOut, unlockAdmin } from "./owner.js";
+import { cachedViews, fetchViews, readAsUser, setAsUser } from "./owner.js";
+import { readSession, refreshUser, SIGNED_OUT_EVENT } from "./auth.js";
+import { AccountFooter, SignIn } from "./Account.jsx";
 import { applyTheme, currentTheme } from "./theme.js";
 
 // `shared` controls only what the hub LISTS. Every game stays reachable at its
@@ -68,16 +70,18 @@ export default function App() {
   const [route, setRoute] = useState(parseRoute);
   const [lockHour] = useState(nightLockHour);
   const [copiedId, setCopiedId] = useState(null);
+  // Null until someone signs in; nothing but the sign-in screen renders then.
   const [session, setSession] = useState(readSession);
   // Remembered, so an admin can simply use the app as a user day to day rather
-  // than only peeking. It still never touches identity — marks made in the user
-  // view are filed under whoever the device belongs to.
+  // than only peeking. It never changes whose data is written — the server
+  // files everything under whoever is signed in.
   const [viewAsUser, setViewAsUserState] = useState(readAsUser);
   const toggleAsUser = (on) => {
     setAsUser(on);
     setViewAsUserState(on);
   };
-  const isAdmin = session.isAdmin;
+  const user = session?.user;
+  const isAdmin = !!user?.admin;
   const asAdmin = isAdmin && !viewAsUser;
   const [showSettings, setShowSettings] = useState(false);
   // Start from whatever this device last saw so the list does not flicker or
@@ -89,77 +93,33 @@ export default function App() {
   // <html> before anything paints.
   useEffect(() => applyTheme(theme), [theme]);
 
+  // A session ended elsewhere (sign-out, password change) lands back here.
   useEffect(() => {
+    const onSignedOut = () => setSession(null);
+    window.addEventListener(SIGNED_OUT_EVENT, onSignedOut);
+    return () => window.removeEventListener(SIGNED_OUT_EVENT, onSignedOut);
+  }, []);
+
+  const userId = user?.id;
+  useEffect(() => {
+    if (!userId) return undefined;
     let cancelled = false;
+    // Picks up a role change without making anyone sign in again.
+    refreshUser().then((u) => {
+      if (!cancelled && u) setSession(readSession());
+    });
     fetchViews().then((v) => {
       if (!cancelled && v) setViews(v);
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [userId]);
 
   // Each person has their own list, so previewing shows YOUR user view, not hers.
-  const myView = views ? views[session.identity] : null;
+  const myView = views && userId ? views[userId] : null;
   const isShared = (g) => (myView && g.id in myView ? myView[g.id] : g.shared !== false);
   const visibleGames = asAdmin ? GAMES : GAMES.filter(isShared);
-
-  const handOverDevice = () => {
-    signOut();
-    setSession({ isAdmin: false, identity: session.identity === ME ? ME : session.identity });
-    setSession(readSession());
-    toggleAsUser(false);
-  };
-
-  const holdRef = useRef(null);
-  const tapsRef = useRef({ count: 0, last: 0 });
-  const [showUnlock, setShowUnlock] = useState(false);
-  const [holding, setHolding] = useState(false);
-  const [keyDraft, setKeyDraft] = useState("");
-  const [keyBad, setKeyBad] = useState(false);
-
-  const openUnlock = () => {
-    setHolding(false);
-    setShowUnlock(true);
-  };
-
-  const startHold = () => {
-    if (isAdmin) return;
-    setHolding(true);
-    holdRef.current = setTimeout(openUnlock, 1200);
-  };
-  // Deliberately NOT bound to pointerleave: on a touch screen the smallest
-  // finger drift used to cancel the hold, which is most of why it felt broken.
-  const cancelHold = () => {
-    clearTimeout(holdRef.current);
-    holdRef.current = null;
-    setHolding(false);
-  };
-  useEffect(() => () => clearTimeout(holdRef.current), []);
-
-  // Second way in, for when a long press is awkward: five taps on the sun.
-  const tapSun = () => {
-    if (isAdmin) return;
-    const now = Date.now();
-    const t = tapsRef.current;
-    t.count = now - t.last > 800 ? 1 : t.count + 1;
-    t.last = now;
-    if (t.count >= 5) {
-      t.count = 0;
-      openUnlock();
-    }
-  };
-
-  const tryUnlock = () => {
-    if (unlockAdmin(keyDraft)) {
-      setSession(readSession());
-      setShowUnlock(false);
-      setKeyDraft("");
-      setKeyBad(false);
-    } else {
-      setKeyBad(true);
-    }
-  };
 
   const copyLink = async (id) => {
     try {
@@ -175,6 +135,9 @@ export default function App() {
     return <div style={{ background: TOKENS.bgDeep, minHeight: "100vh" }} />;
   }
 
+  // The birthday card's link never names the app (see scripts/prerender.mjs).
+  if (!session) return <SignIn onSignedIn={setSession} title={route.id === "birthday" ? null : undefined} />;
+
   // The card is a whole screen of its own — its own background, its own fonts,
   // nothing above it. Returned before the app chrome rather than inside it: a
   // greeting and a theme toggle framing a gift would undo it.
@@ -183,7 +146,7 @@ export default function App() {
   const activeGame = route.view === "game" ? GAMES.find((g) => g.id === route.id) : null;
   const isNight = !!activeGame?.night;
   const bare = !!activeGame?.bare;
-  const myName = session.identity === ME ? "Javanshir" : "Ganira";
+  const myName = user.name;
   const locked = route.view === "game" && lockHour !== null;
 
   return (
@@ -236,29 +199,16 @@ export default function App() {
       <div className="w-full max-w-sm flex flex-col items-center">
         {!bare && (
           <>
-        <button onClick={tapSun} aria-label="Sun" className="mb-2" style={{ background: "none", border: "none", padding: 0 }}>
+        <div className="mb-2">
           {isNight ? <Moon size={18} color={TOKENS.gold} /> : <Sun size={18} color={TOKENS.gold} />}
-        </button>
-        {/* Two ways to unlock without a URL, which an installed app cannot use:
-            hold the title, or tap the sun five times. The title dims while held
-            so it is obvious the press is registering. */}
+        </div>
         <h1
-          onPointerDown={startHold}
-          onPointerUp={cancelHold}
-          onPointerCancel={cancelHold}
-          onContextMenu={(e) => e.preventDefault()}
           style={{
             color: TOKENS.cream,
             fontFamily: "'Fraunces', serif",
             fontWeight: 600,
             fontSize: 26,
             textAlign: "center",
-            userSelect: "none",
-            WebkitUserSelect: "none",
-            WebkitTouchCallout: "none",
-            touchAction: "manipulation",
-            opacity: holding ? 0.55 : 1,
-            transition: "opacity 1.2s linear",
           }}
           className="mb-1"
         >
@@ -267,59 +217,6 @@ export default function App() {
         <p style={{ color: TOKENS.muted, fontSize: 13.5, textAlign: "center" }} className="mb-8">
           {isNight ? "something small before you sleep." : "a little something, whenever you need it."}
         </p>
-
-        {showUnlock && (
-          <div
-            className="w-full flex flex-col items-center"
-            style={{
-              background: `linear-gradient(160deg, ${TOKENS.bgCard}, ${TOKENS.bgCardEdge})`,
-              border: `1px solid ${TOKENS.line}`,
-              borderRadius: 14,
-              padding: "14px 16px",
-              marginBottom: 22,
-            }}
-          >
-            <input
-              value={keyDraft}
-              onChange={(e) => {
-                setKeyDraft(e.target.value);
-                setKeyBad(false);
-              }}
-              onKeyDown={(e) => e.key === "Enter" && tryUnlock()}
-              placeholder="Key"
-              autoFocus
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              style={{
-                width: "100%",
-                background: TOKENS.bgDeep,
-                border: `1px solid ${keyBad ? "#C4184F" : TOKENS.line}`,
-                borderRadius: 8,
-                color: TOKENS.cream,
-                fontFamily: "'Manrope', sans-serif",
-                fontSize: 13,
-                padding: "8px 10px",
-                marginBottom: 10,
-              }}
-            />
-            <div className="flex items-center gap-4">
-              <button onClick={tryUnlock} style={{ color: TOKENS.gold, fontSize: 12, fontWeight: 700 }}>
-                Unlock
-              </button>
-              <button
-                onClick={() => {
-                  setShowUnlock(false);
-                  setKeyDraft("");
-                  setKeyBad(false);
-                }}
-                style={{ color: TOKENS.muted, fontSize: 12 }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
 
           </>
         )}
@@ -440,12 +337,9 @@ export default function App() {
                     {viewAsUser ? "back to admin" : "view as user"}
                   </button>
                 </div>
-                {/* Previewing changes what is listed, never whose data is written. */}
-                <span style={{ color: TOKENS.muted, fontSize: 9.5, opacity: 0.6 }}>
-                  saving as {session.identity === ME ? "Javanshir" : "Ganira"}
-                </span>
               </div>
             )}
+            <AccountFooter user={user} onSignedOut={() => setSession(null)} />
           </>
         ) : (
           <>
@@ -455,9 +349,9 @@ export default function App() {
             {route.id === "this-or-that" && <ThisOrThatGame />}
             {route.id === "surprise" && <SurpriseBoxGame />}
             {route.id === "jar" && <VerseJarGame />}
-            {route.id === "names" && <NamesGame identity={session.identity} />}
-            {route.id === "khatm" && <KhatmGame identity={session.identity} />}
-            {route.id === "quran" && <Quran identity={session.identity} />}
+            {route.id === "names" && <NamesGame />}
+            {route.id === "khatm" && <KhatmGame identity={userId} />}
+            {route.id === "quran" && <Quran identity={userId} />}
             {route.id === "close-day" && <CloseDayGame />}
             {route.id === "three-things" && <ThreeThingsGame />}
             {route.id === "highlights" && <HighlightsGame />}

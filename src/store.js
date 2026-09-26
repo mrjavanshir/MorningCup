@@ -11,9 +11,9 @@
  * rather than a broken game.
  */
 
-const STORE_URL = (import.meta.env.VITE_STORE_URL || "").replace(/\/+$/, "");
+import { authFetch, storeConfigured } from "./auth.js";
 
-export const storeConfigured = () => STORE_URL !== "";
+export { storeConfigured };
 
 export function encodeInline(value) {
   return btoa(unescape(encodeURIComponent(JSON.stringify(value))));
@@ -32,9 +32,9 @@ export function decodeInline(raw) {
  * link — callers should not care which of the two it got.
  */
 export async function saveState(value) {
-  if (STORE_URL) {
+  if (storeConfigured()) {
     try {
-      const res = await fetch(`${STORE_URL}/s`, {
+      const res = await authFetch(`/s`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(value),
@@ -56,9 +56,9 @@ export async function saveState(value) {
  * sharing a collection means passing on the id alone, which is read-only.
  */
 export async function createCollection(data) {
-  if (!STORE_URL) return null;
+  if (!storeConfigured()) return null;
   try {
-    const res = await fetch(`${STORE_URL}/c`, {
+    const res = await authFetch(`/c`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -72,9 +72,9 @@ export async function createCollection(data) {
 }
 
 export async function readCollection(id) {
-  if (!STORE_URL) return null;
+  if (!storeConfigured()) return null;
   try {
-    const res = await fetch(`${STORE_URL}/c/${encodeURIComponent(id)}`);
+    const res = await authFetch(`/c/${encodeURIComponent(id)}`);
     return res.ok ? await res.json() : null;
   } catch {
     return null;
@@ -82,9 +82,9 @@ export async function readCollection(id) {
 }
 
 export async function updateCollection(id, key, data) {
-  if (!STORE_URL) return false;
+  if (!storeConfigured()) return false;
   try {
-    const res = await fetch(`${STORE_URL}/c/${encodeURIComponent(id)}`, {
+    const res = await authFetch(`/c/${encodeURIComponent(id)}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "X-Write-Key": key },
       body: JSON.stringify(data),
@@ -106,9 +106,9 @@ export async function loadState(search = window.location.search) {
 
   const id = params.get("i");
   if (id) {
-    if (!STORE_URL) return null;
+    if (!storeConfigured()) return null;
     try {
-      const res = await fetch(`${STORE_URL}/s/${encodeURIComponent(id)}`);
+      const res = await authFetch(`/s/${encodeURIComponent(id)}`);
       if (!res.ok) return null;
       return { data: await res.json(), param: "i", value: id };
     } catch {

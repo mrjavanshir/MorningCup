@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { BookmarkCheck, BookOpenText, ChevronLeft, ChevronRight, Heart, ImageDown, List, Pause, Play } from "lucide-react";
 import { TOKENS, alpha } from "./messages.js";
 import { SURAHS, TOTAL_AYAHS } from "./surahs.js";
-import { cachedDoc, docsAvailable, readDoc, updateDoc } from "./doc.js";
+import { cachedDoc, cachedUserDoc, docsAvailable, readDoc, readUserDoc, updateDoc } from "./doc.js";
 import SharePreview from "./SharePreview.jsx";
 
 const DOC = "reading";
@@ -142,7 +142,10 @@ export default function Quran({ identity }) {
   const otherName = me === HIM ? "Ganira" : "Javanshir";
   const them = me === HIM ? HER : HIM;
 
+  // Your own document holds `mark`, `read` and `likes`; theirs is only read,
+  // for the progress bar beside yours.
   const [doc, setDoc] = useState(() => cachedDoc(DOC) || {});
+  const [theirDoc, setTheirDoc] = useState(() => cachedUserDoc(them, DOC) || {});
   const [openSurah, setOpenSurah] = useState(null);
   const [ayahs, setAyahs] = useState(null);
   const [loadState, setLoadState] = useState("idle");
@@ -162,11 +165,9 @@ export default function Quran({ identity }) {
   const t = STRINGS[L];
   const tafsirSource = TAFSIRS[tafsirPick] ? tafsirPick : L;
 
-  const marks = doc.marks || {};
-  const readAll = doc.read || {};
-  const myRead = readAll[me] || {};
-  const mine = marks[me];
-  const myLikes = (doc.likes || {})[me] || {};
+  const myRead = doc.read || {};
+  const mine = doc.mark;
+  const myLikes = doc.likes || {};
   const likedSurahs = myLikes.surahs || {};
   const likedAyahs = myLikes.ayahs || {};
   const newestFirst = (bucket) => Object.entries(bucket).sort(([, a], [, b]) => (b.at || "").localeCompare(a.at || ""));
@@ -175,6 +176,9 @@ export default function Quran({ identity }) {
     let cancelled = false;
     readDoc(DOC).then((d) => {
       if (!cancelled && d) setDoc(d);
+    });
+    readUserDoc(them, DOC).then((d) => {
+      if (!cancelled && d) setTheirDoc(d);
     });
     return () => {
       cancelled = true;
@@ -240,9 +244,8 @@ export default function Quran({ identity }) {
       if (el) el.scrollIntoView({ block: "center" });
       return;
     }
-    const bookmark = marks[me];
-    const resumeAt =
-      bookmark && bookmark.surah === openSurah ? bookmark.ayah : (readAll[me] || {})[openSurah] || 0;
+    const bookmark = doc.mark;
+    const resumeAt = bookmark && bookmark.surah === openSurah ? bookmark.ayah : myRead[openSurah] || 0;
     if (resumeAt < 2) return; // the first ayah is already at the top
     const el = document.querySelector(`[data-ayah="${resumeAt}"]`);
     if (el) el.scrollIntoView({ block: "center" });
@@ -269,35 +272,29 @@ export default function Quran({ identity }) {
   // surah adds only what you read there, rather than claiming everything before.
   // `count` of 0 clears the surah; the bookmark only moves when reading forward.
   const setProgress = async (surah, count, bookmark = true) => {
-    const optimistic = {
-      ...doc,
-      marks: bookmark ? { ...marks, [me]: { surah, ayah: count } } : marks,
-      read: { ...readAll, [me]: { ...myRead, [surah]: count } },
-    };
-    setDoc(optimistic);
-    const saved = await updateDoc(DOC, (latest) => ({
-      ...latest,
-      marks: bookmark ? { ...(latest.marks || {}), [me]: { surah, ayah: count } } : latest.marks || {},
-      read: { ...(latest.read || {}), [me]: { ...((latest.read || {})[me] || {}), [surah]: count } },
-      updated: new Date().toISOString(),
-    }));
+    const apply = (d) => ({
+      ...d,
+      mark: bookmark ? { surah, ayah: count } : d.mark,
+      read: { ...(d.read || {}), [surah]: count },
+    });
+    setDoc((d) => apply(d));
+    const saved = await updateDoc(DOC, (latest) => ({ ...apply(latest), updated: new Date().toISOString() }));
     if (saved) setDoc(saved);
   };
 
   const markHere = (surah, ayah) => setProgress(surah, ayah);
 
-  // Likes are per person, one entry per key, so toggling touches only that key
-  // and a like made on the other device in the meantime survives the merge.
-  // An ayah keeps its text so the liked list can show it without refetching.
+  // One entry per key, so toggling touches only that key and a like made on
+  // your other device in the meantime survives the merge. An ayah keeps its
+  // text so the liked list can show it without refetching.
   const toggleLike = async (kind, key, entry) => {
     const on = !((myLikes[kind] || {})[key]);
     const apply = (d) => {
       const likes = d.likes || {};
-      const theirs = likes[me] || {};
-      const bucket = { ...(theirs[kind] || {}) };
+      const bucket = { ...(likes[kind] || {}) };
       if (on) bucket[key] = { ...entry, at: new Date().toISOString() };
       else delete bucket[key];
-      return { ...d, likes: { ...likes, [me]: { ...theirs, [kind]: bucket } } };
+      return { ...d, likes: { ...likes, [kind]: bucket } };
     };
     setDoc((d) => apply(d));
     const saved = await updateDoc(DOC, (latest) => ({ ...apply(latest), updated: new Date().toISOString() }));
@@ -608,8 +605,8 @@ export default function Quran({ identity }) {
   }
 
   // ---------- index ----------
-  const myTotal = ayahsRead(readAll[me]);
-  const theirTotal = ayahsRead(readAll[them]);
+  const myTotal = ayahsRead(myRead);
+  const theirTotal = ayahsRead(theirDoc.read);
 
   const likedSurahList = newestFirst(likedSurahs).map(([n]) => surahOf(Number(n))).filter(Boolean);
   const likedAyahList = newestFirst(likedAyahs);

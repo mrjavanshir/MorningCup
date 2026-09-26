@@ -2,9 +2,8 @@ import React, { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { RotateCcw } from "lucide-react";
 import { TOKENS, alpha } from "./messages.js";
-import { cachedDoc, docsAvailable, readDoc, updateDoc } from "./doc.js";
+import { cachedKhatm, docsAvailable, readKhatm, resetKhatm, toggleJuz } from "./doc.js";
 
-const DOC = "khatm";
 const JUZ_COUNT = 30;
 const HIM = "j";
 const HER = "g";
@@ -14,14 +13,14 @@ const HER_COLOR = "#7FB2A6";
 export default function KhatmGame({ identity }) {
   const me = identity === HIM ? HIM : HER;
   const otherName = me === HIM ? "Ganira" : "Javanshir";
-  const [juz, setJuz] = useState(() => cachedDoc(DOC)?.juz || {});
+  const [juz, setJuz] = useState(() => cachedKhatm()?.juz || {});
   const [status, setStatus] = useState("loading"); // loading | ready | saving | offline
   const [confirmReset, setConfirmReset] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const data = await readDoc(DOC);
+      const data = await readKhatm();
       if (cancelled) return;
       if (data) setJuz(data.juz || {});
       setStatus(data ? "ready" : "offline");
@@ -49,14 +48,9 @@ export default function KhatmGame({ identity }) {
     setJuz(optimistic);
     setStatus("saving");
 
-    const saved = await updateDoc(DOC, (latest) => {
-      const next = { ...(latest.juz || {}) };
-      const theirMark = next[key];
-      if (theirMark && theirMark !== me) return latest; // they claimed it first
-      if (current === me) delete next[key];
-      else next[key] = me;
-      return { ...latest, juz: next, updated: new Date().toISOString() };
-    });
+    // The server marks it for whoever is signed in, and if they claimed it
+    // first it answers with their mark in place.
+    const saved = await toggleJuz(n);
 
     if (saved) {
       setJuz(saved.juz || {});
@@ -70,7 +64,7 @@ export default function KhatmGame({ identity }) {
   const reset = async () => {
     setConfirmReset(false);
     setStatus("saving");
-    const saved = await updateDoc(DOC, () => ({ juz: {}, started: new Date().toISOString() }));
+    const saved = await resetKhatm();
     setJuz(saved ? saved.juz || {} : {});
     setStatus(saved ? "ready" : "offline");
   };

@@ -4,15 +4,12 @@ import { BookOpenText, ChevronLeft, ChevronRight, Grid3x3, Heart, Shuffle, X } f
 import { TOKENS, alpha } from "./messages.js";
 import { NAMES } from "./names.js";
 import { NAMES_AZ } from "./namesAz.js";
-import { cachedDoc, docsAvailable, readDoc, updateDoc } from "./doc.js";
-import { ME } from "./owner.js";
+import { cachedDoc, readDoc, updateDoc } from "./doc.js";
 
 const SEEN_KEY = "names-seen";
 const LANG_KEY = "names-lang";
 const MORE_KEY = "names-more";
 const DOC = "names";
-// Without the store, likes still work — they just stay on this device.
-const LOCAL_LIKES_KEY = "names-likes";
 const LIKE_COLOR = "#C0656B";
 
 // Only Azerbaijani has the longer explanation; English keeps the short meaning.
@@ -83,18 +80,7 @@ function readStartIndex() {
   return n && Number.isInteger(num) && num >= 1 && num <= NAMES.length ? num - 1 : nameOfTheDay();
 }
 
-function loadLocalLikes() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(LOCAL_LIKES_KEY) || "{}");
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
-export default function NamesGame({ identity }) {
-  const me = identity === ME ? "j" : "g";
-  const shared = docsAvailable();
+export default function NamesGame() {
   const [index, setIndex] = useState(readStartIndex);
   const [dir, setDir] = useState(0);
   const [seen, setSeen] = useState(loadSeen);
@@ -102,18 +88,16 @@ export default function NamesGame({ identity }) {
   const [lang, setLang] = useState(() => (stored(LANG_KEY, "en") === "az" ? "az" : "en"));
   // Left open, the explanation follows you from name to name.
   const [showMore, setShowMore] = useState(() => stored(MORE_KEY, "") === "1");
-  const [doc, setDoc] = useState(() => (shared ? cachedDoc(DOC) || {} : {}));
-  const [localLikes, setLocalLikes] = useState(loadLocalLikes);
+  const [doc, setDoc] = useState(() => cachedDoc(DOC) || {});
   const [gridView, setGridView] = useState("all");
 
-  const likes = shared ? ((doc.likes || {})[me] || {}) : localLikes;
+  const likes = doc.likes || {};
   const likedList = Object.entries(likes)
     .sort(([, a], [, b]) => (b.at || "").localeCompare(a.at || ""))
     .map(([n]) => Number(n) - 1)
     .filter((i) => NAMES[i]);
 
   useEffect(() => {
-    if (!shared) return undefined;
     let cancelled = false;
     readDoc(DOC).then((d) => {
       if (!cancelled && d) setDoc(d);
@@ -121,24 +105,17 @@ export default function NamesGame({ identity }) {
     return () => {
       cancelled = true;
     };
-  }, [shared]);
+  }, []);
 
-  // One key per Name, so a like made on the other device survives the merge.
+  // One key per Name, so a like made on your other device survives the merge.
   const toggleLike = async (n) => {
     const on = !likes[n];
-    const apply = (bucket) => {
-      const next = { ...bucket };
+    const withLike = (d) => {
+      const next = { ...(d.likes || {}) };
       if (on) next[n] = { at: new Date().toISOString() };
       else delete next[n];
-      return next;
+      return { ...d, likes: next };
     };
-    if (!shared) {
-      const next = apply(localLikes);
-      setLocalLikes(next);
-      store(LOCAL_LIKES_KEY, JSON.stringify(next));
-      return;
-    }
-    const withLike = (d) => ({ ...d, likes: { ...(d.likes || {}), [me]: apply((d.likes || {})[me] || {}) } });
     setDoc((d) => withLike(d));
     const saved = await updateDoc(DOC, (latest) => ({ ...withLike(latest), updated: new Date().toISOString() }));
     if (saved) setDoc(saved);

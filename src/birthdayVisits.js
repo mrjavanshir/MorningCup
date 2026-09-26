@@ -1,14 +1,14 @@
 /**
  * Visit log for the birthday card — admin-only to read, and Ganira has no way
- * to reach it from the UI. Rides on the same named-document store as the
- * khatm (see doc.js for the read-merge-write mechanics), under its own
- * document name so it never collides with anything else there.
+ * to reach it from the UI. Each viewer's visits go into their own document
+ * (see doc.js); the admin panel reads hers.
  *
  * Deliberately tracks nothing about what happens inside the card — only that
  * it was opened, when, and for how long.
  */
 
-import { docsAvailable, readDoc, writeDoc } from "./doc.js";
+import { docsAvailable, readDoc, readUserDoc, writeDoc } from "./doc.js";
+import { THEM } from "./owner.js";
 
 const DOC = "birthday-visits";
 // Keeps the document well under the Worker's 16 KB payload cap (each session
@@ -53,9 +53,9 @@ export function endVisit(handle, ms) {
   writeDoc(DOC, { sessions }, { keepalive: true });
 }
 
-/** Admin-only read: every recorded visit, newest first. */
+/** Admin-only read: every visit she recorded, newest first. */
 export async function fetchVisits() {
-  const doc = await readDoc(DOC);
+  const doc = await readUserDoc(THEM, DOC);
   const sessions = doc && Array.isArray(doc.sessions) ? doc.sessions : [];
   return [...sessions].reverse();
 }
