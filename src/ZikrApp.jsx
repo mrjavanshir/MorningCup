@@ -12,7 +12,7 @@ const RING = TOKENS.gold;
 const HER_COLOR = "#7FB2A6";
 // A round is 33 unless you set your own count for that phrase.
 const DEFAULT_TARGET = 33;
-const MAX_TARGET = 10000;
+const MAX_TARGET = 50000;
 const TARGET_PRESETS = [33, 99, 100, 1000];
 // This many zikr in a day, of any phrase, waters the pomegranate — fixed, so
 // a round of 1 cannot water it and a round of 1000 does not hold it back.
