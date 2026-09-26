@@ -14,6 +14,8 @@
  *   POST /auth/logout                            ->  204, ends this session
  *   GET  /auth/me                                ->  { user }
  *   POST /auth/password  { current, next }       ->  { token }, ends every other session
+ *   POST /auth/reset     { username, next }      ->  admin only: sets anyone's password,
+ *                                                    { token } when it is your own
  *
  *   GET|PUT /me/doc/:name          your own document
  *   GET     /users/:id/doc/:name   the other person's, read-only
@@ -205,11 +207,41 @@ async function changePassword(request, env, cors, me) {
   const hash = await hashPassword(current, me.salt, me.iterations || PBKDF2_ITERATIONS);
   if (!keysMatch(hash, me.hash)) return json({ error: "current password is wrong" }, 403, cors);
 
-  const salt = toHex(crypto.getRandomValues(new Uint8Array(16)));
   const { token: _t, username, ...stored } = me;
-  const updated = { ...stored, salt, iterations: PBKDF2_ITERATIONS, hash: await hashPassword(next, salt), ver: (me.ver || 0) + 1 };
-  await env.STORE.put(`user:${username}`, JSON.stringify(updated));
+  const updated = await setPassword(env, username, stored, next);
   // Every other device is signed out; this one carries on with a fresh token.
+  await env.STORE.delete(await sessionKey(me.token));
+  return json({ token: await startSession(env, username, updated) }, 200, cors);
+}
+
+/**
+ * Writes a new password onto an account record. Bumping `ver` retires every
+ * session made before it, and the account-wide lockout is lifted so the new
+ * password works straight away.
+ */
+async function setPassword(env, username, record, next) {
+  const salt = toHex(crypto.getRandomValues(new Uint8Array(16)));
+  const updated = { ...record, salt, iterations: PBKDF2_ITERATIONS, hash: await hashPassword(next, salt), ver: (record.ver || 0) + 1 };
+  await env.STORE.put(`user:${username}`, JSON.stringify(updated));
+  await env.STORE.delete(`rl:${username}`);
+  return updated;
+}
+
+// For when a password is forgotten: there is no email to send a link to, so
+// the admin sets a new one. No current password is asked for, which is why
+// this is admin-only.
+async function resetPassword(request, env, cors, me) {
+  if (!me.admin) return json({ error: "admin only" }, 403, cors);
+  const body = await readJsonBody(request);
+  if (body.error) return json({ error: body.error }, body.status, cors);
+  const username = String(body.value?.username || "").trim().toLowerCase();
+  const next = String(body.value?.next || "");
+  if (next.length < 8) return json({ error: "the new password needs at least 8 characters" }, 400, cors);
+  const record = /^[a-z0-9_-]{1,32}$/.test(username) ? await readJson(env, `user:${username}`, null) : null;
+  if (!record) return json({ error: "no such account" }, 404, cors);
+  const updated = await setPassword(env, username, record, next);
+  if (username !== me.username) return json({}, 200, cors);
+  // Your own: every other device is signed out, this one stays in.
   await env.STORE.delete(await sessionKey(me.token));
   return json({ token: await startSession(env, username, updated) }, 200, cors);
 }
@@ -268,6 +300,7 @@ async function route(request, env, cors, url) {
     return new Response(null, { status: 204, headers: cors });
   }
   if (pathname === "/auth/password" && method === "POST") return changePassword(request, env, cors, me);
+  if (pathname === "/auth/reset" && method === "POST") return resetPassword(request, env, cors, me);
 
   // ---- your own documents ----
   const own = pathname.match(/^\/me\/doc\/([a-z][a-z0-9-]{0,30})$/);

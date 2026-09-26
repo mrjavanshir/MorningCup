@@ -17,6 +17,7 @@ person's data — not by a bug, not by a crafted request.
 | `POST /auth/logout` | ends this session |
 | `GET /auth/me` | → `{ user }` |
 | `POST /auth/password` | `{ current, next }` → `{ token }`; signs out every other device |
+| `POST /auth/reset` | admin only: `{ username, next }` sets either account's password without the current one; that account is signed out everywhere (for your own, this device gets a fresh `{ token }`) |
 | `GET` / `PUT /me/doc/:name` | your own document, stored as `u:<id>:<name>` |
 | `GET /users/:id/doc/:name` | the other person's document, read-only |
 | `GET /khatm`, `POST /khatm/toggle`, `POST /khatm/reset` | the one shared document; the server stamps each mark with whoever is signed in and will not clear the other person's |
@@ -43,8 +44,11 @@ node scripts/set-password.mjs javanshir --remote
 node scripts/set-password.mjs ganira --remote
 ```
 
-There is no "forgot password" (there is no email); run the script again. Either
-person can also change their own password from the hub.
+There is no email, so no "forgot password" link. Instead, signed in as
+`javanshir`, the hub's **Reset** (under the game list) sets a new password on
+either account without the old one — it suggests a random one and shows it to
+pass on. Either person can also change their own password from **Password**,
+and the script above still works if nobody can sign in at all.
 
 ## Moving to accounts (once)
 

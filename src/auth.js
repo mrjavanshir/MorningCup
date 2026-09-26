@@ -113,6 +113,28 @@ export async function changePassword(current, next) {
   }
 }
 
+/**
+ * Admin only: sets a new password on any account without the current one.
+ * The account is signed out everywhere; for your own, this device stays in.
+ * Resolves to null on success, or a message to show.
+ */
+export async function resetPassword(username, next) {
+  try {
+    const res = await authFetch("/auth/reset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, next }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) return body.error || "Could not reset the password.";
+    const session = readSession();
+    if (session && body.token) saveSession({ ...session, token: body.token });
+    return null;
+  } catch {
+    return "Could not reach the server. Check the connection and try again.";
+  }
+}
+
 /** Refreshes the stored user (name, admin) from the server. */
 export async function refreshUser() {
   try {
