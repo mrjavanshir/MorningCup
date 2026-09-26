@@ -30,7 +30,7 @@ const GAMES = [
   { id: "this-or-that", icon: Scale, title: "This or That", desc: "Pick a side, compare picks.", shared: true },
   { id: "surprise", icon: Gift, title: "Surprise Box", desc: "No idea what's inside.", shared: true },
   { id: "jar", icon: Scroll, title: "Verses Jar", desc: "Read me when…", shared: true },
-  { id: "names", icon: Sparkle, title: "The 99 Names", desc: "One at a time, or all of them.", shared: true },
+  { id: "names", icon: Sparkle, title: "The 99 Names", desc: "One at a time, or all of them.", shared: true, bare: true },
   { id: "khatm", icon: BookOpen, title: "Khatm Together", desc: "Thirty juz, between the two of you.", shared: true },
   { id: "quran", icon: BookMarked, title: "Read the Qur'an", desc: "All 114, with where you each are.", shared: true, bare: true },
   { id: "birthday", icon: Cake, title: "Birthday Card", desc: "Open the box.", shared: false },
