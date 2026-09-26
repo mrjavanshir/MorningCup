@@ -1,13 +1,19 @@
 import React, { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { BookOpenText, ChevronLeft, ChevronRight, Grid3x3, Shuffle, X } from "lucide-react";
+import { BookOpenText, ChevronLeft, ChevronRight, Grid3x3, Heart, Shuffle, X } from "lucide-react";
 import { TOKENS, alpha } from "./messages.js";
 import { NAMES } from "./names.js";
 import { NAMES_AZ } from "./namesAz.js";
+import { cachedDoc, docsAvailable, readDoc, updateDoc } from "./doc.js";
+import { ME } from "./owner.js";
 
 const SEEN_KEY = "names-seen";
 const LANG_KEY = "names-lang";
 const MORE_KEY = "names-more";
+const DOC = "names";
+// Without the store, likes still work — they just stay on this device.
+const LOCAL_LIKES_KEY = "names-likes";
+const LIKE_COLOR = "#C0656B";
 
 // Only Azerbaijani has the longer explanation; English keeps the short meaning.
 const STRINGS = {
@@ -15,12 +21,16 @@ const STRINGS = {
     title: "The ninety-nine Names", hint: "Swipe, or tap the grid for all of them",
     all: "All ninety-nine", opened: (n, total) => `${n} of ${total} opened`, back: "Back",
     prev: "Previous name", next: "Next name", random: "Random name", grid: "Show all names",
+    like: "Like this name", unlike: "Unlike this name", allTab: "All", likedTab: (n) => `Liked · ${n}`,
+    likedEmpty: "Tap ♥ on a name and it will wait for you here.",
   },
   az: {
     title: "Allahın doxsan doqquz adı", hint: "Sürüşdür, ya da hamısı üçün cədvələ toxun",
     all: "Doxsan doqquzu da", opened: (n, total) => `${total} addan ${n} açılıb`, back: "Geri",
     prev: "Əvvəlki ad", next: "Növbəti ad", random: "Təsadüfi ad", grid: "Bütün adları göstər",
     more: "Ətraflı izah", less: "İzahı gizlət",
+    like: "Bu adı bəyən", unlike: "Bəyənməni geri al", allTab: "Hamısı", likedTab: (n) => `Bəyəndiklərim · ${n}`,
+    likedEmpty: "Addakı ♥ işarəsinə toxun — burada səni gözləyəcək.",
   },
 };
 
@@ -73,7 +83,18 @@ function readStartIndex() {
   return n && Number.isInteger(num) && num >= 1 && num <= NAMES.length ? num - 1 : nameOfTheDay();
 }
 
-export default function NamesGame() {
+function loadLocalLikes() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(LOCAL_LIKES_KEY) || "{}");
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+export default function NamesGame({ identity }) {
+  const me = identity === ME ? "j" : "g";
+  const shared = docsAvailable();
   const [index, setIndex] = useState(readStartIndex);
   const [dir, setDir] = useState(0);
   const [seen, setSeen] = useState(loadSeen);
@@ -81,6 +102,47 @@ export default function NamesGame() {
   const [lang, setLang] = useState(() => (stored(LANG_KEY, "en") === "az" ? "az" : "en"));
   // Left open, the explanation follows you from name to name.
   const [showMore, setShowMore] = useState(() => stored(MORE_KEY, "") === "1");
+  const [doc, setDoc] = useState(() => (shared ? cachedDoc(DOC) || {} : {}));
+  const [localLikes, setLocalLikes] = useState(loadLocalLikes);
+  const [gridView, setGridView] = useState("all");
+
+  const likes = shared ? ((doc.likes || {})[me] || {}) : localLikes;
+  const likedList = Object.entries(likes)
+    .sort(([, a], [, b]) => (b.at || "").localeCompare(a.at || ""))
+    .map(([n]) => Number(n) - 1)
+    .filter((i) => NAMES[i]);
+
+  useEffect(() => {
+    if (!shared) return undefined;
+    let cancelled = false;
+    readDoc(DOC).then((d) => {
+      if (!cancelled && d) setDoc(d);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [shared]);
+
+  // One key per Name, so a like made on the other device survives the merge.
+  const toggleLike = async (n) => {
+    const on = !likes[n];
+    const apply = (bucket) => {
+      const next = { ...bucket };
+      if (on) next[n] = { at: new Date().toISOString() };
+      else delete next[n];
+      return next;
+    };
+    if (!shared) {
+      const next = apply(localLikes);
+      setLocalLikes(next);
+      store(LOCAL_LIKES_KEY, JSON.stringify(next));
+      return;
+    }
+    const withLike = (d) => ({ ...d, likes: { ...(d.likes || {}), [me]: apply((d.likes || {})[me] || {}) } });
+    setDoc((d) => withLike(d));
+    const saved = await updateDoc(DOC, (latest) => ({ ...withLike(latest), updated: new Date().toISOString() }));
+    if (saved) setDoc(saved);
+  };
 
   const name = NAMES[index];
   const az = NAMES_AZ[index];
@@ -156,6 +218,71 @@ export default function NamesGame() {
         <p style={{ color: TOKENS.muted, fontSize: 11.5, textAlign: "center" }} className="mb-5">
           {t.opened(seen.size, NAMES.length)}
         </p>
+        <div className="w-full flex gap-1.5 mb-4">
+          {[["all", t.allTab], ["liked", t.likedTab(likedList.length)]].map(([id, text]) => (
+            <button
+              key={id}
+              onClick={() => setGridView(id)}
+              style={{
+                flex: 1,
+                height: 34,
+                borderRadius: 9999,
+                fontSize: 11.5,
+                fontWeight: 700,
+                border: `1px solid ${gridView === id ? alpha(TOKENS.gold, "66") : TOKENS.line}`,
+                color: gridView === id ? TOKENS.gold : TOKENS.muted,
+              }}
+              className="flex items-center justify-center gap-1.5"
+            >
+              {id === "liked" && <Heart size={12} fill={gridView === id ? "currentColor" : "none"} />} {text}
+            </button>
+          ))}
+        </div>
+
+        {gridView === "liked" && likedList.length === 0 && (
+          <p style={{ color: TOKENS.muted, fontSize: 12.5, textAlign: "center" }} className="mb-5">
+            {t.likedEmpty}
+          </p>
+        )}
+
+        {gridView === "liked" && likedList.length > 0 && (
+          <div className="w-full flex flex-col gap-1.5 mb-5">
+            {likedList.map((i) => (
+              <motion.button
+                key={NAMES[i].n}
+                onClick={() => jump(i)}
+                whileTap={{ scale: 0.99 }}
+                style={{
+                  width: "100%",
+                  background: `linear-gradient(160deg, ${TOKENS.bgCard}, ${TOKENS.bgCardEdge})`,
+                  border: `1px solid ${TOKENS.line}`,
+                  borderRadius: 12,
+                  padding: "9px 13px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 11,
+                }}
+              >
+                <span style={{ color: TOKENS.muted, fontSize: 11, fontWeight: 700, width: 22, flexShrink: 0, textAlign: "left" }}>
+                  {NAMES[i].n}
+                </span>
+                <span style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+                  <span style={{ display: "block", color: TOKENS.cream, fontFamily: "'Fraunces', serif", fontSize: 14 }}>
+                    {lang === "az" ? NAMES_AZ[i].name : NAMES[i].tr}
+                  </span>
+                  <span style={{ display: "block", color: TOKENS.muted, fontSize: 11 }}>
+                    {lang === "az" ? NAMES_AZ[i].meaning : NAMES[i].meaning}
+                  </span>
+                </span>
+                <span dir="rtl" lang="ar" style={{ color: TOKENS.gold, fontFamily: "'Amiri', serif", fontSize: 17, flexShrink: 0 }}>
+                  {NAMES[i].ar}
+                </span>
+              </motion.button>
+            ))}
+          </div>
+        )}
+
+        {gridView === "all" && (
         <div
           style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(58px, 1fr))", gap: 7, width: "100%" }}
           className="mb-5"
@@ -179,12 +306,17 @@ export default function NamesGame() {
                 justifyContent: "center",
                 fontSize: 12,
                 fontWeight: 700,
+                position: "relative",
               }}
             >
               {nm.n}
+              {likes[nm.n] && (
+                <Heart size={9} fill={LIKE_COLOR} style={{ color: LIKE_COLOR, position: "absolute", top: 5, right: 5 }} />
+              )}
             </motion.button>
           ))}
         </div>
+        )}
         <button
           onClick={() => setShowIndex(false)}
           style={{ color: TOKENS.muted, fontSize: 12.5 }}
@@ -249,6 +381,15 @@ export default function NamesGame() {
             >
               {String(name.n).padStart(2, "0")} / {NAMES.length}
             </span>
+            <button
+              onClick={() => toggleLike(name.n)}
+              onPointerDown={(e) => e.stopPropagation()}
+              aria-label={likes[name.n] ? t.unlike : t.like}
+              aria-pressed={!!likes[name.n]}
+              style={{ position: "absolute", top: 14, right: 14, padding: 6, color: likes[name.n] ? LIKE_COLOR : TOKENS.muted }}
+            >
+              <Heart size={18} fill={likes[name.n] ? "currentColor" : "none"} />
+            </button>
 
             <p
               dir="rtl"

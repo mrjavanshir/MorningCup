@@ -455,7 +455,7 @@ export default function App() {
             {route.id === "this-or-that" && <ThisOrThatGame />}
             {route.id === "surprise" && <SurpriseBoxGame />}
             {route.id === "jar" && <VerseJarGame />}
-            {route.id === "names" && <NamesGame />}
+            {route.id === "names" && <NamesGame identity={session.identity} />}
             {route.id === "khatm" && <KhatmGame identity={session.identity} />}
             {route.id === "quran" && <Quran identity={session.identity} />}
             {route.id === "close-day" && <CloseDayGame />}
