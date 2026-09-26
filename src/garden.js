@@ -11,7 +11,7 @@ import { authFetch, readSession, storeConfigured } from "./auth.js";
 
 export const PLANTS = [
   { id: "olive", name: "Olive", source: "grows when you read the Qur'an", app: "quran" },
-  { id: "pomegranate", name: "Pomegranate", source: "grows when you mark a juz of the khatm", app: "khatm" },
+  { id: "pomegranate", name: "Pomegranate", source: "grows when you finish a round of zikr", app: "zikr" },
   { id: "rose", name: "Rose", source: "grows when you open a new Name", app: "names" },
 ];
 

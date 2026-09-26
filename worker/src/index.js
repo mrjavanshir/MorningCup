@@ -51,7 +51,7 @@ const LOGIN_MAX_FAILURES = 5;
 const LOGIN_MAX_FAILURES_ACCOUNT = 30;
 const JUZ_COUNT = 30;
 // Each plant grows from one part of the app: olive from the Qur'an, pomegranate
-// from the khatm, rose from the 99 Names.
+// from zikr, rose from the 99 Names.
 const PLANTS = ["olive", "pomegranate", "rose"];
 
 // The garden's days turn over at midnight in Baku, wherever the Worker runs.

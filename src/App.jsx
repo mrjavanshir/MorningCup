@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { BookMarked, BookOpen, Sparkle, Sprout, ArrowUpFromLine, Cake, Check, Eraser, Gift, Link2, Moon, NotebookPen, Scale, Scroll, Stamp, Sun, Sunrise, Sunset } from "lucide-react";
+import { BookMarked, BookOpen, CircleDot, Sparkle, Sprout, ArrowUpFromLine, Cake, Check, Eraser, Gift, Link2, Moon, NotebookPen, Scale, Scroll, Stamp, Sun, Sunrise, Sunset } from "lucide-react";
 import { TOKENS, alpha } from "./messages.js";
 import SunApp from "./SunApp.jsx";
 import DaybreakApp from "./DaybreakApp.jsx";
@@ -15,6 +15,7 @@ import SharedSettings from "./SharedSettings.jsx";
 import KhatmApp from "./KhatmApp.jsx";
 import Quran from "./Quran.jsx";
 import GardenApp, { GardenWidget } from "./GardenApp.jsx";
+import ZikrApp from "./ZikrApp.jsx";
 import BirthdayGiftCard from "./BirthdayGiftCard.jsx";
 import { cachedViews, fetchViews, readAsUser, setAsUser } from "./owner.js";
 import { readSession, refreshUser, SIGNED_OUT_EVENT } from "./auth.js";
@@ -37,6 +38,7 @@ const APPS = [
   { id: "names", icon: Sparkle, title: "The 99 Names", desc: "One at a time, or all of them.", shared: true, bare: true },
   { id: "khatm", icon: BookOpen, title: "Khatm Together", desc: "Thirty juz, between the two of you.", shared: true },
   { id: "quran", icon: BookMarked, title: "Read the Qur'an", desc: "All 114, with where you each are.", shared: true, bare: true },
+  { id: "zikr", icon: CircleDot, title: "Zikr", desc: "A tasbih — every 33 waters the garden.", shared: true },
   { id: "garden", icon: Sprout, title: "Our Garden", desc: "Grows when either of you reads.", shared: true },
   { id: "birthday", icon: Cake, title: "Birthday Card", desc: "Open the box.", shared: false },
   { id: "close-day", icon: Eraser, title: "Close the Day", desc: "Dump it out, watch it go.", night: true, shared: true },
@@ -395,6 +397,7 @@ export default function App() {
             {route.id === "names" && <NamesApp />}
             {route.id === "khatm" && <KhatmApp identity={userId} />}
             {route.id === "quran" && <Quran identity={userId} />}
+            {route.id === "zikr" && <ZikrApp me={userId} />}
             {route.id === "garden" && <GardenApp me={userId} onOpenApp={(id) => setRoute({ view: "app", id })} />}
             {route.id === "close-day" && <CloseDayApp />}
             {route.id === "three-things" && <ThreeThingsApp />}
