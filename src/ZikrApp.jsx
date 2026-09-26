@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { Plus, RotateCcw, Trash2 } from "lucide-react";
+import { Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { TOKENS, alpha } from "./messages.js";
 import { cachedDoc, cachedUserDoc, readDoc, readUserDoc, updateDoc } from "./doc.js";
 import { gardenDay, water } from "./garden.js";
@@ -10,7 +10,13 @@ const HIM = "j";
 const HIS_COLOR = TOKENS.gold;
 const RING = TOKENS.gold;
 const HER_COLOR = "#7FB2A6";
-const ROUND = 33;
+// A round is 33 unless you set your own count for that phrase.
+const DEFAULT_TARGET = 33;
+const MAX_TARGET = 10000;
+const TARGET_PRESETS = [33, 99, 100, 1000];
+// This many zikr in a day, of any phrase, waters the pomegranate — fixed, so
+// a round of 1 cannot water it and a round of 1000 does not hold it back.
+const WATER_AT = 33;
 // Taps are saved in batches, this long after the last one.
 const SAVE_AFTER_MS = 1200;
 
@@ -64,6 +70,8 @@ export default function ZikrApp({ me }) {
   const [draft, setDraft] = useState("");
   const [draftError, setDraftError] = useState(null);
   const [confirmRemove, setConfirmRemove] = useState(null);
+  const [editingTarget, setEditingTarget] = useState(false);
+  const [targetDraft, setTargetDraft] = useState("");
   const [theirs, setTheirs] = useState(() => cachedUserDoc(them, DOC) || {});
   // Taps not yet on the server, by phrase.
   const pending = useRef({});
@@ -83,8 +91,10 @@ export default function ZikrApp({ me }) {
   // A remembered phrase that has since been removed falls back to the first.
   const current = phrases.find((p) => p.id === phrase) || PHRASES[0];
   const count = counts[current.id] || 0;
-  const inRound = count % ROUND;
-  const rounds = Math.floor(count / ROUND);
+  const targets = doc.targets && typeof doc.targets === "object" ? doc.targets : {};
+  const target = Number.isInteger(targets[current.id]) && targets[current.id] > 0 ? targets[current.id] : DEFAULT_TARGET;
+  const inRound = count % target;
+  const rounds = Math.floor(count / target);
 
   useEffect(() => {
     let cancelled = false;
@@ -154,18 +164,30 @@ export default function ZikrApp({ me }) {
     clearTimeout(timer.current);
     timer.current = setTimeout(flush, SAVE_AFTER_MS);
     setPulse((p) => p + 1);
-    const roundDone = next % ROUND === 0;
+    const roundDone = next % target === 0;
     try {
       navigator.vibrate?.(roundDone ? [40, 60, 40] : 8);
     } catch {
       /* no vibration on this device */
     }
-    // A finished round waters the pomegranate in the garden.
-    if (roundDone) water("pomegranate");
+    // The day's 33rd zikr, of any phrase, waters the pomegranate.
+    if (dayTotal(doc, today) + 1 >= WATER_AT) water("pomegranate");
+  };
+
+  const saveTarget = async (n) => {
+    const value = Math.round(Number(n));
+    if (!Number.isFinite(value) || value < 1 || value > MAX_TARGET) return;
+    const id = current.id;
+    const withIt = (d) => ({ ...d, targets: { ...(d.targets && typeof d.targets === "object" ? d.targets : {}), [id]: value } });
+    setDoc((d) => withIt(d));
+    setEditingTarget(false);
+    const saved = await inTurn(() => updateDoc(DOC, (latest) => ({ ...withIt(latest), updated: new Date().toISOString() })));
+    if (saved) setDoc((d) => ({ ...saved, days: d.days }));
   };
 
   const pick = (id) => {
     setPhrase(id);
+    setEditingTarget(false);
     try {
       localStorage.setItem(PICK_KEY, id);
     } catch {
@@ -198,7 +220,10 @@ export default function ZikrApp({ me }) {
   const removePhrase = async (id) => {
     if (confirmRemove !== id) return setConfirmRemove(id);
     setConfirmRemove(null);
-    const without = (d) => ({ ...d, custom: (Array.isArray(d.custom) ? d.custom : []).filter((c) => c.id !== id) });
+    const without = (d) => {
+      const { [id]: _gone, ...targetsLeft } = d.targets && typeof d.targets === "object" ? d.targets : {};
+      return { ...d, custom: (Array.isArray(d.custom) ? d.custom : []).filter((c) => c.id !== id), targets: targetsLeft };
+    };
     setDoc((d) => without(d));
     pick(PHRASES[0].id);
     const saved = await inTurn(() => updateDoc(DOC, (latest) => ({ ...without(latest), updated: new Date().toISOString() })));
@@ -216,7 +241,7 @@ export default function ZikrApp({ me }) {
         Zikr
       </p>
       <p style={{ color: TOKENS.gold, fontSize: 11.5, textAlign: "center", opacity: 0.75 }} className="mb-4">
-        tap the circle to count — every {ROUND} waters the pomegranate
+        tap the circle to count — {WATER_AT} a day waters the pomegranate
       </p>
 
       <div className="w-full flex gap-1.5 mb-5" style={{ flexWrap: "wrap", justifyContent: "center" }}>
@@ -303,7 +328,7 @@ export default function ZikrApp({ me }) {
       <motion.button
         onClick={tap}
         whileTap={{ scale: 0.97 }}
-        aria-label={`Count ${current.tr}, ${inRound} of ${ROUND}`}
+        aria-label={`Count ${current.tr}, ${inRound} of ${target}`}
         style={{
           position: "relative",
           width: 232,
@@ -327,7 +352,7 @@ export default function ZikrApp({ me }) {
             strokeWidth={6}
             strokeLinecap="round"
             strokeDasharray={circumference}
-            strokeDashoffset={circumference * (1 - inRound / ROUND)}
+            strokeDashoffset={circumference * (1 - inRound / target)}
             transform="rotate(-90 116 116)"
             style={{ transition: "stroke-dashoffset 0.25s ease" }}
           />
@@ -342,10 +367,84 @@ export default function ZikrApp({ me }) {
               {current.tr}
             </span>
           )}
-          <span style={{ color: TOKENS.cream, fontFamily: "'Fraunces', serif", fontSize: 44, fontWeight: 600, lineHeight: 1.1 }}>{inRound}</span>
-          <span style={{ color: TOKENS.muted, fontSize: 11 }}>of {ROUND}</span>
+          <span style={{ color: TOKENS.cream, fontFamily: "'Fraunces', serif", fontSize: inRound > 999 ? 34 : 44, fontWeight: 600, lineHeight: 1.1 }}>{inRound}</span>
+          <span style={{ color: TOKENS.muted, fontSize: 11 }}>of {target}</span>
         </motion.div>
       </motion.button>
+
+      {!editingTarget ? (
+        <button
+          onClick={() => {
+            setTargetDraft(String(target));
+            setEditingTarget(true);
+          }}
+          aria-label={`Change the count for ${current.tr}`}
+          style={{ color: TOKENS.muted, fontSize: 11.5 }}
+          className="flex items-center gap-1.5 mt-3"
+        >
+          <Pencil size={11} /> Count to {target}
+        </button>
+      ) : (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            saveTarget(targetDraft);
+          }}
+          className="w-full flex flex-col items-center gap-2 mt-3"
+        >
+          <div className="flex gap-1.5" style={{ flexWrap: "wrap", justifyContent: "center" }}>
+            {TARGET_PRESETS.map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => saveTarget(n)}
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  padding: "5px 12px",
+                  borderRadius: 9999,
+                  border: `1px solid ${n === target ? alpha(TOKENS.gold, "66") : TOKENS.line}`,
+                  color: n === target ? TOKENS.gold : TOKENS.muted,
+                }}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={MAX_TARGET}
+              value={targetDraft}
+              onChange={(e) => setTargetDraft(e.target.value)}
+              aria-label="Your own count"
+              style={{
+                width: 96,
+                background: TOKENS.bgDeep,
+                border: `1px solid ${TOKENS.line}`,
+                borderRadius: 10,
+                color: TOKENS.cream,
+                fontSize: 14,
+                padding: "7px 10px",
+                textAlign: "center",
+              }}
+            />
+            <button
+              type="submit"
+              disabled={!(Number(targetDraft) >= 1 && Number(targetDraft) <= MAX_TARGET)}
+              style={{ color: TOKENS.gold, fontSize: 12.5, fontWeight: 700, opacity: Number(targetDraft) >= 1 && Number(targetDraft) <= MAX_TARGET ? 1 : 0.4 }}
+            >
+              Save
+            </button>
+            <button type="button" onClick={() => setEditingTarget(false)} style={{ color: TOKENS.muted, fontSize: 12.5 }}>
+              Cancel
+            </button>
+          </div>
+          <p style={{ color: TOKENS.muted, fontSize: 10.5 }}>Anything from 1 to {MAX_TARGET.toLocaleString("en")}, for this zikr only.</p>
+        </form>
+      )}
 
       {current.meaning && (
         <p style={{ color: TOKENS.cream, fontSize: 13, textAlign: "center" }} className="mt-4">

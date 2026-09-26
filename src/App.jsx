@@ -38,7 +38,7 @@ const APPS = [
   { id: "names", icon: Sparkle, title: "The 99 Names", desc: "One at a time, or all of them.", shared: true, bare: true },
   { id: "khatm", icon: BookOpen, title: "Khatm Together", desc: "Thirty juz, between the two of you.", shared: true },
   { id: "quran", icon: BookMarked, title: "Read the Qur'an", desc: "All 114, with where you each are.", shared: true, bare: true },
-  { id: "zikr", icon: CircleDot, title: "Zikr", desc: "A tasbih — every 33 waters the garden.", shared: true },
+  { id: "zikr", icon: CircleDot, title: "Zikr", desc: "A tasbih — 33 a day waters the garden.", shared: true },
   { id: "garden", icon: Sprout, title: "Our Garden", desc: "Grows when either of you reads.", shared: true },
   { id: "birthday", icon: Cake, title: "Birthday Card", desc: "Open the box.", shared: false },
   { id: "close-day", icon: Eraser, title: "Close the Day", desc: "Dump it out, watch it go.", night: true, shared: true },
