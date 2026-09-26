@@ -360,7 +360,7 @@ function KeptList({ ids, notes = {}, title, subtitle, onBack, onShare, shareLabe
   );
 }
 
-export default function VerseJarGame() {
+export default function VerseJarApp() {
   const papers = useMemo(layoutPapers, []);
   const [openId, setOpenId] = useState(readSharedId);
   const [read, setRead] = useState(loadRead);
@@ -476,7 +476,7 @@ export default function VerseJarGame() {
   const shareCollection = async () => {
     const existing = loadCollection();
     if (!existing) return;
-    const url = `${window.location.origin}${import.meta.env.BASE_URL}games/jar?kept=${existing.id}`;
+    const url = `${window.location.origin}${import.meta.env.BASE_URL}apps/jar?kept=${existing.id}`;
     try {
       if (navigator.share) {
         await navigator.share({ title: "Verses I've kept", url });
@@ -557,7 +557,7 @@ export default function VerseJarGame() {
   };
 
   const share = async () => {
-    const url = `${window.location.origin}${import.meta.env.BASE_URL}games/jar?v=${open.id}`;
+    const url = `${window.location.origin}${import.meta.env.BASE_URL}apps/jar?v=${open.id}`;
     const text = `“${open.text}” — ${open.ref}`;
     try {
       if (navigator.share) {

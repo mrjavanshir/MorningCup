@@ -25,7 +25,7 @@ function readParams() {
   return raw ? decodeThings(raw) : null;
 }
 
-export default function ThreeThingsGame() {
+export default function ThreeThingsApp() {
   const [viewThings] = useState(readParams);
   const isViewer = viewThings !== null;
 
@@ -39,7 +39,7 @@ export default function ThreeThingsGame() {
   const setThing = (i, value) => setThings((prev) => prev.map((t, idx) => (idx === i ? value : t)));
 
   const copyResultLink = async () => {
-    const link = `${window.location.origin}${import.meta.env.BASE_URL}games/three-things?t=${encodeThings(
+    const link = `${window.location.origin}${import.meta.env.BASE_URL}apps/three-things?t=${encodeThings(
       things.map((t) => t.trim())
     )}`;
     try {

@@ -2,7 +2,7 @@
  * Each person's own documents, plus read-only access to the other person's.
  *
  * The server files a write under whoever the session belongs to, so there is
- * no way to address someone else's document from here — a bug in a game can
+ * no way to address someone else's document from here — a bug in an app can
  * at worst lose your own data, never theirs.
  *
  * Writes still go through read-merge-write rather than a blind overwrite: the

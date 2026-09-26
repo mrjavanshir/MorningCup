@@ -10,7 +10,7 @@ function pickIndex(exclude) {
   return next;
 }
 
-export default function CloseDayGame() {
+export default function CloseDayApp() {
   const [text, setText] = useState("");
   const [phase, setPhase] = useState("write"); // write | dissolving | gone
   const [messageIndex, setMessageIndex] = useState(() => pickIndex(null));

@@ -38,7 +38,7 @@ function decodeStateFromURL() {
   }
 }
 
-export default function AgreementGame() {
+export default function AgreementApp() {
   const [viewClauses] = useState(decodeStateFromURL);
   const isViewer = viewClauses !== null;
 
@@ -76,7 +76,7 @@ export default function AgreementGame() {
   };
 
   const copyResultLink = async () => {
-    const link = `${window.location.origin}${import.meta.env.BASE_URL}games/agreement?d=${encodeState(clauses)}`;
+    const link = `${window.location.origin}${import.meta.env.BASE_URL}apps/agreement?d=${encodeState(clauses)}`;
     try {
       await navigator.clipboard.writeText(link);
       setCopied(true);

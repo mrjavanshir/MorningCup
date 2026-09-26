@@ -2,7 +2,7 @@
 
 /* The palette lives here so a theme swap is one attribute on <html>.
    TOKENS in messages.js resolves to these, which is why module-scope
-   constants in the games keep working without a re-render. */
+   constants in the apps keep working without a re-render. */
 :root {
   color-scheme: dark;
   --bg-deep: #170d11;

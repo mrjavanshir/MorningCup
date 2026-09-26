@@ -4,7 +4,7 @@ import NoteResult from "./NoteResult.jsx";
 
 const STEPS = 5;
 
-export default function SunGame() {
+export default function SunApp() {
   const [fill, setFill] = useState(0);
   const [index, setIndex] = useState(0);
   const message = SUN_MESSAGES[index];

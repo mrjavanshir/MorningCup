@@ -1,18 +1,18 @@
 import React, { useEffect, useState } from "react";
 import { BookMarked, BookOpen, Sparkle, ArrowUpFromLine, Cake, Check, Eraser, Gift, Link2, Moon, NotebookPen, Scale, Scroll, Stamp, Sun, Sunrise, Sunset } from "lucide-react";
 import { TOKENS, alpha } from "./messages.js";
-import SunGame from "./SunGame.jsx";
-import DaybreakGame from "./DaybreakGame.jsx";
-import AgreementGame from "./AgreementGame.jsx";
-import ThisOrThatGame from "./ThisOrThatGame.jsx";
-import SurpriseBoxGame from "./SurpriseBoxGame.jsx";
-import VerseJarGame from "./VerseJarGame.jsx";
-import CloseDayGame from "./CloseDayGame.jsx";
-import ThreeThingsGame from "./ThreeThingsGame.jsx";
-import HighlightsGame from "./HighlightsGame.jsx";
-import NamesGame from "./NamesGame.jsx";
+import SunApp from "./SunApp.jsx";
+import DaybreakApp from "./DaybreakApp.jsx";
+import AgreementApp from "./AgreementApp.jsx";
+import ThisOrThatApp from "./ThisOrThatApp.jsx";
+import SurpriseBoxApp from "./SurpriseBoxApp.jsx";
+import VerseJarApp from "./VerseJarApp.jsx";
+import CloseDayApp from "./CloseDayApp.jsx";
+import ThreeThingsApp from "./ThreeThingsApp.jsx";
+import HighlightsApp from "./HighlightsApp.jsx";
+import NamesApp from "./NamesApp.jsx";
 import SharedSettings from "./SharedSettings.jsx";
-import KhatmGame from "./KhatmGame.jsx";
+import KhatmApp from "./KhatmApp.jsx";
 import Quran from "./Quran.jsx";
 import BirthdayGiftCard from "./BirthdayGiftCard.jsx";
 import { cachedViews, fetchViews, readAsUser, setAsUser } from "./owner.js";
@@ -20,12 +20,13 @@ import { readSession, refreshUser, SIGNED_OUT_EVENT } from "./auth.js";
 import { AccountFooter, ChooseNewPassword, SignIn } from "./Account.jsx";
 import { applyTheme, currentTheme } from "./theme.js";
 
-// `shared` controls only what the hub LISTS. Every game stays reachable at its
-// own /games/<id> URL whatever this says, so links already sent keep working.
-// `bare` drops the app header on that game's page, for the ones you sit inside
+// `shared` controls only what the hub LISTS. Every app stays reachable at its
+// own /apps/<id> URL whatever this says, so links already sent keep working —
+// and so do the older /games/<id> ones (see parseRoute).
+// `bare` drops the app header on that app's page, for the ones you sit inside
 // for a while rather than glance at — the greeting is just a band of dead space
 // above a long read.
-const GAMES = [
+const APPS = [
   { id: "sun", icon: Sunrise, title: "Sunrise", desc: "Tap to raise it.", shared: true },
   { id: "daybreak", icon: ArrowUpFromLine, title: "Daybreak", desc: "Drag to bring up the sun.", shared: true },
   { id: "agreement", icon: Stamp, title: "Agreement", desc: "Stamp it to make it official.", shared: true },
@@ -44,15 +45,22 @@ const GAMES = [
 function parseRoute() {
   const path = window.location.pathname.slice(import.meta.env.BASE_URL.length).replace(/\/+$/, "");
   const segments = path.split("/").filter(Boolean);
-  if (segments.length === 1 && segments[0] === "sun") return { view: "game", id: "sun" };
-  if (segments[0] !== "games") return { view: "blank" };
+  // Links sent before the rename point at /games/…; open them, and show the
+  // current address so a copy of it is the new one.
+  if (segments[0] === "games") {
+    segments[0] = "apps";
+    const url = `${import.meta.env.BASE_URL}${segments.join("/")}${window.location.search}${window.location.hash}`;
+    window.history.replaceState(null, "", url);
+  }
+  if (segments.length === 1 && segments[0] === "sun") return { view: "app", id: "sun" };
+  if (segments[0] !== "apps") return { view: "blank" };
   if (segments.length === 1) return { view: "hub" };
-  if (segments.length === 2 && GAMES.some((g) => g.id === segments[1])) return { view: "game", id: segments[1] };
+  if (segments.length === 2 && APPS.some((g) => g.id === segments[1])) return { view: "app", id: segments[1] };
   return { view: "blank" };
 }
 
-function gameLink(id) {
-  return `${window.location.origin}${import.meta.env.BASE_URL}games/${id}`;
+function appLink(id) {
+  return `${window.location.origin}${import.meta.env.BASE_URL}apps/${id}`;
 }
 
 // Opt-in via ?after=22 — the page refuses to open before that hour.
@@ -121,11 +129,11 @@ export default function App() {
   // Each person has their own list, so previewing shows YOUR user view, not hers.
   const myView = views && userId ? views[userId] : null;
   const isShared = (g) => (myView && g.id in myView ? myView[g.id] : g.shared !== false);
-  const visibleGames = asAdmin ? GAMES : GAMES.filter(isShared);
+  const visibleApps = asAdmin ? APPS : APPS.filter(isShared);
 
   const copyLink = async (id) => {
     try {
-      await navigator.clipboard.writeText(gameLink(id));
+      await navigator.clipboard.writeText(appLink(id));
       setCopiedId(id);
       setTimeout(() => setCopiedId((c) => (c === id ? null : c)), 1800);
     } catch {
@@ -171,13 +179,13 @@ export default function App() {
   // The card is a whole screen of its own — its own background, its own fonts,
   // nothing above it. Returned before the app chrome rather than inside it: a
   // greeting and a theme toggle framing a gift would undo it.
-  if (route.view === "game" && route.id === "birthday") return <BirthdayGiftCard admin={asAdmin} />;
+  if (route.view === "app" && route.id === "birthday") return <BirthdayGiftCard admin={asAdmin} />;
 
-  const activeGame = route.view === "game" ? GAMES.find((g) => g.id === route.id) : null;
-  const isNight = !!activeGame?.night;
-  const bare = !!activeGame?.bare;
+  const activeApp = route.view === "app" ? APPS.find((g) => g.id === route.id) : null;
+  const isNight = !!activeApp?.night;
+  const bare = !!activeApp?.bare;
   const myName = user.name;
-  const locked = route.view === "game" && lockHour !== null;
+  const locked = route.view === "app" && lockHour !== null;
 
   return (
     <div
@@ -262,18 +270,18 @@ export default function App() {
             </p>
           </div>
         ) : showSettings && isAdmin ? (
-          <SharedSettings games={GAMES} onBack={() => setShowSettings(false)} onSaved={setViews} />
+          <SharedSettings apps={APPS} onBack={() => setShowSettings(false)} onSaved={setViews} />
         ) : route.view === "hub" ? (
           <>
             {asAdmin && (
               <p style={{ color: TOKENS.muted, fontSize: 11.5, textAlign: "center" }} className="mb-4">
-                Each game has its own link — whoever opens it only sees that one game.
+                Each app has its own link — whoever opens it only sees that one app.
               </p>
             )}
             <div className="w-full flex flex-col gap-3">
-              {visibleGames.map((g, i) => {
+              {visibleApps.map((g, i) => {
                 const Icon = g.icon;
-                const startsGroup = i === 0 || visibleGames[i - 1].night !== g.night;
+                const startsGroup = i === 0 || visibleApps[i - 1].night !== g.night;
                 return (
                   <React.Fragment key={g.id}>
                     {startsGroup && (
@@ -301,7 +309,7 @@ export default function App() {
                     className="w-full flex items-center gap-3"
                   >
                     <button
-                      onClick={() => setRoute({ view: "game", id: g.id })}
+                      onClick={() => setRoute({ view: "app", id: g.id })}
                       style={{ background: "none", border: "none", textAlign: "left", cursor: "pointer", padding: "8px 0" }}
                       className="flex items-center gap-3 flex-1 min-w-0"
                     >
@@ -350,7 +358,7 @@ export default function App() {
                       letterSpacing: 1.2,
                     }}
                   >
-                    {viewAsUser ? `USER VIEW · ${visibleGames.length}` : `ADMIN · ${GAMES.length} games`}
+                    {viewAsUser ? `USER VIEW · ${visibleApps.length}` : `ADMIN · ${APPS.length} apps`}
                   </span>
                   {!viewAsUser && (
                     <button
@@ -373,18 +381,18 @@ export default function App() {
           </>
         ) : (
           <>
-            {route.id === "sun" && <SunGame />}
-            {route.id === "daybreak" && <DaybreakGame />}
-            {route.id === "agreement" && <AgreementGame />}
-            {route.id === "this-or-that" && <ThisOrThatGame />}
-            {route.id === "surprise" && <SurpriseBoxGame />}
-            {route.id === "jar" && <VerseJarGame />}
-            {route.id === "names" && <NamesGame />}
-            {route.id === "khatm" && <KhatmGame identity={userId} />}
+            {route.id === "sun" && <SunApp />}
+            {route.id === "daybreak" && <DaybreakApp />}
+            {route.id === "agreement" && <AgreementApp />}
+            {route.id === "this-or-that" && <ThisOrThatApp />}
+            {route.id === "surprise" && <SurpriseBoxApp />}
+            {route.id === "jar" && <VerseJarApp />}
+            {route.id === "names" && <NamesApp />}
+            {route.id === "khatm" && <KhatmApp identity={userId} />}
             {route.id === "quran" && <Quran identity={userId} />}
-            {route.id === "close-day" && <CloseDayGame />}
-            {route.id === "three-things" && <ThreeThingsGame />}
-            {route.id === "highlights" && <HighlightsGame />}
+            {route.id === "close-day" && <CloseDayApp />}
+            {route.id === "three-things" && <ThreeThingsApp />}
+            {route.id === "highlights" && <HighlightsApp />}
           </>
         )}
       </div>

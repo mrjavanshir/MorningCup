@@ -50,7 +50,7 @@ function Card({ who, text, delay }) {
   );
 }
 
-export default function HighlightsGame() {
+export default function HighlightsApp() {
   const [{ his, hers, rawA }] = useState(readParams);
   const isReveal = his !== null && hers !== null;
   const isReplying = his !== null && hers === null;
@@ -62,7 +62,7 @@ export default function HighlightsGame() {
   const ready = text.trim().length > 0;
 
   const copyLink = async (query) => {
-    const link = `${window.location.origin}${import.meta.env.BASE_URL}games/highlights?${query}`;
+    const link = `${window.location.origin}${import.meta.env.BASE_URL}apps/highlights?${query}`;
     try {
       await navigator.clipboard.writeText(link);
       setCopied(true);

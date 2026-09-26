@@ -1,14 +1,14 @@
 /**
- * Shared-state helper for the link-based games.
+ * Shared-state helper for the link-based apps.
  *
- * Two ways to carry a game's state in a link:
+ * Two ways to carry an app's state in a link:
  *   ?a=<base64>  the payload inline — works with no backend at all
  *   ?i=<id>      a short id pointing at the Cloudflare Worker store
  *
  * The store is used only when VITE_STORE_URL is set AND the request succeeds;
  * otherwise this silently falls back to inline. That keeps every link that has
  * already been sent working, and means a Worker outage degrades to long URLs
- * rather than a broken game.
+ * rather than a broken app.
  */
 
 import { authFetch, storeConfigured } from "./auth.js";
@@ -28,7 +28,7 @@ export function decodeInline(raw) {
 }
 
 /**
- * Persist a game's state. Returns the query param name and value to put in the
+ * Persist an app's state. Returns the query param name and value to put in the
  * link — callers should not care which of the two it got.
  */
 export async function saveState(value) {

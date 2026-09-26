@@ -28,7 +28,7 @@
  *   POST /khatm/toggle { juz }     marks or unmarks it as yours — never theirs
  *   POST /khatm/reset
  *
- *   GET /config, PUT /config (admin)   which games each person's hub lists
+ *   GET /config, PUT /config (admin)   which apps each person's hub lists
  *
  *   POST /s, GET /s/:id                 write-once blobs behind a short id
  *   POST /c, GET /c/:id, PUT /c/:id     mutable collections, written with a key
@@ -341,7 +341,7 @@ async function route(request, env, cors, url) {
     if (res) return res;
   }
 
-  // ---- which games each hub lists ----
+  // ---- which apps each hub lists ----
   if (pathname === "/config") {
     if (method === "GET") return readDocResponse(env, "config:shared", cors);
     if (method === "PUT") {

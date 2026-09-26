@@ -87,7 +87,7 @@ function ComparisonRows({ mine, theirs, mineLabel, theirsLabel }) {
   );
 }
 
-export default function ThisOrThatGame() {
+export default function ThisOrThatApp() {
   const [{ a: paramA, b: paramB }] = useState(readParams);
   const isReveal = paramA !== null && paramB !== null;
   const isCompareMode = paramA !== null && paramB === null;
@@ -117,7 +117,7 @@ export default function ThisOrThatGame() {
   };
 
   const copyLink = async (query) => {
-    const link = `${window.location.origin}${import.meta.env.BASE_URL}games/this-or-that?${query}`;
+    const link = `${window.location.origin}${import.meta.env.BASE_URL}apps/this-or-that?${query}`;
     try {
       await navigator.clipboard.writeText(link);
       setCopied(true);

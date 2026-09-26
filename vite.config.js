@@ -19,7 +19,7 @@ export default defineConfig({
         description: "A little something, whenever you need it.",
         // The site root renders deliberately blank, so an installed app has to
         // start at the hub or it opens to an empty screen.
-        start_url: "/MorningCup/games",
+        start_url: "/MorningCup/apps",
         scope: "/MorningCup/",
         display: "standalone",
         orientation: "portrait",

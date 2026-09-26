@@ -3,7 +3,7 @@
  *
  * Who is signed in comes from auth.js and is decided by the server — this file
  * only names the ids the store files data under, and handles the per-person
- * list of games each hub shows.
+ * list of apps each hub shows.
  */
 
 import { authFetch, storeConfigured } from "./auth.js";
@@ -52,9 +52,9 @@ function cache(config) {
 }
 
 /**
- * Resolves to { j: {gameId: bool}, g: {gameId: bool} } — one list per person,
+ * Resolves to { j: {appId: bool}, g: {appId: bool} } — one list per person,
  * so each of them can be given a different set. Null when there is nothing to
- * go on; callers then fall back to the `shared` flags compiled into GAMES.
+ * go on; callers then fall back to the `shared` flags compiled into APPS.
  */
 export async function fetchViews() {
   if (!storeConfigured()) return null;

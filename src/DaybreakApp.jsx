@@ -12,7 +12,7 @@ const STARS = [
   { t: 14, l: 88 }, { t: 30, l: 20 }, { t: 28, l: 45 }, { t: 34, l: 63 },
 ];
 
-export default function DaybreakGame() {
+export default function DaybreakApp() {
   const [pct, setPct] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [done, setDone] = useState(false);

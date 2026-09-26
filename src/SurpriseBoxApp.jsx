@@ -17,7 +17,7 @@ function shuffle(n) {
   return a;
 }
 
-export default function SurpriseBoxGame() {
+export default function SurpriseBoxApp() {
   const [deck, setDeck] = useState(() => shuffle(SURPRISES.length));
   const [drawn, setDrawn] = useState(0);
   const [phase, setPhase] = useState("closed"); // closed | shaking | open

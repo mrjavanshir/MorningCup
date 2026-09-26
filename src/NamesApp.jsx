@@ -80,7 +80,7 @@ function readStartIndex() {
   return n && Number.isInteger(num) && num >= 1 && num <= NAMES.length ? num - 1 : nameOfTheDay();
 }
 
-export default function NamesGame() {
+export default function NamesApp() {
   const [index, setIndex] = useState(readStartIndex);
   const [dir, setDir] = useState(0);
   const [seen, setSeen] = useState(loadSeen);

@@ -1,6 +1,6 @@
 // The palette resolves through CSS variables (see index.css) so switching
 // theme is one attribute on <html> — no re-render, and it still works in the
-// module-scope constants that several games build from these.
+// module-scope constants that several apps build from these.
 export const TOKENS = {
   bgDeep: "var(--bg-deep)",
   bgCard: "var(--bg-card)",

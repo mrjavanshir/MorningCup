@@ -1,7 +1,7 @@
 # ganira-games-store
 
 The Cloudflare Worker behind the app: sign-in, each person's own data, and the
-short links the link-based games use. The whole app sits behind sign-in, and so
+short links the link-based apps use. The whole app sits behind sign-in, and so
 does every route here except `/auth/login`.
 
 ## How people are kept apart
@@ -27,7 +27,7 @@ its own the next time it signs in. Until it does, every route except
 | `GET` / `PUT /me/doc/:name` | your own document, stored as `u:<id>:<name>` |
 | `GET /users/:id/doc/:name` | the other person's document, read-only |
 | `GET /khatm`, `POST /khatm/toggle`, `POST /khatm/reset` | the one shared document; the server stamps each mark with whoever is signed in and will not clear the other person's |
-| `GET /config`, `PUT /config` | which games each hub lists; writing is admin-only |
+| `GET /config`, `PUT /config` | which apps each hub lists; writing is admin-only |
 | `POST /s`, `GET /s/:id` | write-once blobs behind a short id |
 | `POST /c`, `GET` / `PUT /c/:id` | mutable collections; writing also needs the collection's own key |
 
@@ -54,7 +54,7 @@ node scripts/set-password.mjs ganira --remote --must-change
 so the one you typed stops working. Leave it off for your own account.
 
 There is no email, so no "forgot password" link. Instead, signed in as
-`javanshir`, the hub's **Reset** (under the game list) sets a new password on
+`javanshir`, the hub's **Reset** (under the app list) sets a new password on
 either account without the old one — it suggests a random one and shows it to
 pass on. For her account, that password only lets her choose her own. Either person can also change their own password from **Password**,
 and the script above still works if nobody can sign in at all.

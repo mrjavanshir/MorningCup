@@ -10,7 +10,7 @@ const HER = "g";
 const HIS_COLOR = TOKENS.gold;
 const HER_COLOR = "#7FB2A6";
 
-export default function KhatmGame({ identity }) {
+export default function KhatmApp({ identity }) {
   const me = identity === HIM ? HIM : HER;
   const otherName = me === HIM ? "Ganira" : "Javanshir";
   const [juz, setJuz] = useState(() => cachedKhatm()?.juz || {});

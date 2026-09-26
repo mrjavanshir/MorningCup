@@ -10,9 +10,9 @@ const PEOPLE = [
   { id: ME, label: "You" },
 ];
 
-export default function SharedSettings({ games, onBack, onSaved }) {
+export default function SharedSettings({ apps, onBack, onSaved }) {
   const [who, setWho] = useState(THEM);
-  const blank = () => Object.fromEntries(games.map((g) => [g.id, g.shared !== false]));
+  const blank = () => Object.fromEntries(apps.map((g) => [g.id, g.shared !== false]));
   const [views, setViews] = useState(() => ({ [ME]: blank(), [THEM]: blank() }));
   const visible = views[who];
   const [status, setStatus] = useState("loading"); // loading | ready | saving | saved | failed
@@ -27,7 +27,7 @@ export default function SharedSettings({ games, onBack, onSaved }) {
           Object.fromEntries(
             PEOPLE.map(({ id }) => [
               id,
-              Object.fromEntries(games.map((g) => [g.id, stored[id]?.[g.id] ?? prev[id][g.id]])),
+              Object.fromEntries(apps.map((g) => [g.id, stored[id]?.[g.id] ?? prev[id][g.id]])),
             ])
           )
         );
@@ -37,7 +37,7 @@ export default function SharedSettings({ games, onBack, onSaved }) {
     return () => {
       cancelled = true;
     };
-  }, [games]);
+  }, [apps]);
 
   const toggle = (id) => setViews((prev) => ({ ...prev, [who]: { ...prev[who], [id]: !prev[who][id] } }));
 
@@ -94,11 +94,11 @@ export default function SharedSettings({ games, onBack, onSaved }) {
         ))}
       </div>
       <p style={{ color: TOKENS.muted, fontSize: 11.5, textAlign: "center" }} className="mb-5">
-        {status === "loading" ? "Loading…" : `${shownCount} of ${games.length} on ${who === ME ? "your" : "her"} hub`}
+        {status === "loading" ? "Loading…" : `${shownCount} of ${apps.length} on ${who === ME ? "your" : "her"} hub`}
       </p>
 
       <div className="w-full flex flex-col gap-2 mb-5">
-        {games.map((g) => {
+        {apps.map((g) => {
           const on = visible[g.id];
           const Icon = g.icon;
           return (
@@ -169,7 +169,7 @@ export default function SharedSettings({ games, onBack, onSaved }) {
       </motion.button>
 
       <button onClick={onBack} style={{ color: TOKENS.muted, fontSize: 12.5 }}>
-        Back to the games
+        Back to the apps
       </button>
     </div>
   );
