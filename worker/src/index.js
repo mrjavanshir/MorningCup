@@ -17,6 +17,10 @@
  *   POST /auth/reset     { username, next }      ->  admin only: sets anyone's password,
  *                                                    { token } when it is your own
  *
+ * After the admin resets someone else's password, that account must choose
+ * its own before anything else: until then only /auth/me, /auth/logout and
+ * /auth/password answer, so the admin never keeps a working password to it.
+ *
  *   GET|PUT /me/doc/:name          your own document
  *   GET     /users/:id/doc/:name   the other person's, read-only
  *
@@ -82,7 +86,7 @@ async function hashPassword(password, saltHex, iterations = PBKDF2_ITERATIONS) {
 // out working tokens.
 const sessionKey = async (token) => `session:${toHex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token)))}`;
 
-const publicUser = (u) => ({ id: u.id, name: u.name, admin: !!u.admin });
+const publicUser = (u) => ({ id: u.id, name: u.name, admin: !!u.admin, mustChange: !!u.mustChange });
 
 function allowedOrigins(env) {
   return (env.ALLOWED_ORIGINS || "")
@@ -204,6 +208,7 @@ async function changePassword(request, env, cors, me) {
   const current = String(body.value?.current || "");
   const next = String(body.value?.next || "");
   if (next.length < 8) return json({ error: "the new password needs at least 8 characters" }, 400, cors);
+  if (next === current) return json({ error: "choose a password different from the current one" }, 400, cors);
   const hash = await hashPassword(current, me.salt, me.iterations || PBKDF2_ITERATIONS);
   if (!keysMatch(hash, me.hash)) return json({ error: "current password is wrong" }, 403, cors);
 
@@ -211,7 +216,7 @@ async function changePassword(request, env, cors, me) {
   const updated = await setPassword(env, username, stored, next);
   // Every other device is signed out; this one carries on with a fresh token.
   await env.STORE.delete(await sessionKey(me.token));
-  return json({ token: await startSession(env, username, updated) }, 200, cors);
+  return json({ token: await startSession(env, username, updated), user: publicUser(updated) }, 200, cors);
 }
 
 /**
@@ -219,9 +224,17 @@ async function changePassword(request, env, cors, me) {
  * session made before it, and the account-wide lockout is lifted so the new
  * password works straight away.
  */
-async function setPassword(env, username, record, next) {
+async function setPassword(env, username, record, next, { mustChange = false } = {}) {
   const salt = toHex(crypto.getRandomValues(new Uint8Array(16)));
-  const updated = { ...record, salt, iterations: PBKDF2_ITERATIONS, hash: await hashPassword(next, salt), ver: (record.ver || 0) + 1 };
+  const { mustChange: _old, ...rest } = record;
+  const updated = {
+    ...rest,
+    salt,
+    iterations: PBKDF2_ITERATIONS,
+    hash: await hashPassword(next, salt),
+    ver: (record.ver || 0) + 1,
+    ...(mustChange ? { mustChange: true } : {}),
+  };
   await env.STORE.put(`user:${username}`, JSON.stringify(updated));
   await env.STORE.delete(`rl:${username}`);
   return updated;
@@ -239,8 +252,10 @@ async function resetPassword(request, env, cors, me) {
   if (next.length < 8) return json({ error: "the new password needs at least 8 characters" }, 400, cors);
   const record = /^[a-z0-9_-]{1,32}$/.test(username) ? await readJson(env, `user:${username}`, null) : null;
   if (!record) return json({ error: "no such account" }, 404, cors);
-  const updated = await setPassword(env, username, record, next);
-  if (username !== me.username) return json({}, 200, cors);
+  const own = username === me.username;
+  // Someone else's: they will have to replace the password you now know.
+  const updated = await setPassword(env, username, record, next, { mustChange: !own });
+  if (!own) return json({}, 200, cors);
   // Your own: every other device is signed out, this one stays in.
   await env.STORE.delete(await sessionKey(me.token));
   return json({ token: await startSession(env, username, updated) }, 200, cors);
@@ -300,6 +315,7 @@ async function route(request, env, cors, url) {
     return new Response(null, { status: 204, headers: cors });
   }
   if (pathname === "/auth/password" && method === "POST") return changePassword(request, env, cors, me);
+  if (me.mustChange) return json({ error: "choose a new password first", code: "must-change" }, 403, cors);
   if (pathname === "/auth/reset" && method === "POST") return resetPassword(request, env, cors, me);
 
   // ---- your own documents ----

@@ -17,7 +17,7 @@ import Quran from "./Quran.jsx";
 import BirthdayGiftCard from "./BirthdayGiftCard.jsx";
 import { cachedViews, fetchViews, readAsUser, setAsUser } from "./owner.js";
 import { readSession, refreshUser, SIGNED_OUT_EVENT } from "./auth.js";
-import { AccountFooter, SignIn } from "./Account.jsx";
+import { AccountFooter, ChooseNewPassword, SignIn } from "./Account.jsx";
 import { applyTheme, currentTheme } from "./theme.js";
 
 // `shared` controls only what the hub LISTS. Every game stays reachable at its
@@ -72,6 +72,8 @@ export default function App() {
   const [copiedId, setCopiedId] = useState(null);
   // Null until someone signs in; nothing but the sign-in screen renders then.
   const [session, setSession] = useState(readSession);
+  // Kept in memory only, and only until a forced password change uses it.
+  const [givenPassword, setGivenPassword] = useState(null);
   // Remembered, so an admin can simply use the app as a user day to day rather
   // than only peeking. It never changes whose data is written — the server
   // files everything under whoever is signed in.
@@ -136,7 +138,35 @@ export default function App() {
   }
 
   // The birthday card's link never names the app (see scripts/prerender.mjs).
-  if (!session) return <SignIn onSignedIn={setSession} title={route.id === "birthday" ? null : undefined} />;
+  if (!session) {
+    return (
+      <SignIn
+        onSignedIn={(s, password) => {
+          setGivenPassword(s.user.mustChange ? password : null);
+          setSession(s);
+        }}
+        title={route.id === "birthday" ? null : undefined}
+      />
+    );
+  }
+
+  // A password the admin set has to be replaced before anything opens.
+  if (session.user.mustChange) {
+    return (
+      <ChooseNewPassword
+        user={session.user}
+        givenPassword={givenPassword}
+        onDone={() => {
+          setGivenPassword(null);
+          setSession(readSession());
+        }}
+        onSignedOut={() => {
+          setGivenPassword(null);
+          setSession(null);
+        }}
+      />
+    );
+  }
 
   // The card is a whole screen of its own — its own background, its own fonts,
   // nothing above it. Returned before the app chrome rather than inside it: a

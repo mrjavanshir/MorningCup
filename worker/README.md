@@ -18,6 +18,12 @@ person's data — not by a bug, not by a crafted request.
 | `GET /auth/me` | → `{ user }` |
 | `POST /auth/password` | `{ current, next }` → `{ token }`; signs out every other device |
 | `POST /auth/reset` | admin only: `{ username, next }` sets either account's password without the current one; that account is signed out everywhere (for your own, this device gets a fresh `{ token }`) |
+
+After the admin resets **someone else's** password, that account has to choose
+its own the next time it signs in. Until it does, every route except
+`/auth/me`, `/auth/logout` and `/auth/password` answers `403` with
+`code: "must-change"`, so the password the admin knows only ever opens the
+"choose your own" screen.
 | `GET` / `PUT /me/doc/:name` | your own document, stored as `u:<id>:<name>` |
 | `GET /users/:id/doc/:name` | the other person's document, read-only |
 | `GET /khatm`, `POST /khatm/toggle`, `POST /khatm/reset` | the one shared document; the server stamps each mark with whoever is signed in and will not clear the other person's |
@@ -41,13 +47,16 @@ and it signs that person out everywhere.
 ```bash
 cd worker
 node scripts/set-password.mjs javanshir --remote
-node scripts/set-password.mjs ganira --remote
+node scripts/set-password.mjs ganira --remote --must-change
 ```
+
+`--must-change` makes her choose her own password the first time she signs in,
+so the one you typed stops working. Leave it off for your own account.
 
 There is no email, so no "forgot password" link. Instead, signed in as
 `javanshir`, the hub's **Reset** (under the game list) sets a new password on
 either account without the old one — it suggests a random one and shows it to
-pass on. Either person can also change their own password from **Password**,
+pass on. For her account, that password only lets her choose her own. Either person can also change their own password from **Password**,
 and the script above still works if nobody can sign in at all.
 
 ## Moving to accounts (once)
@@ -62,7 +71,8 @@ the old app cannot write once the Worker requires sign-in:
 
 1. `node scripts/migrate.mjs --remote --dry-run` — check what it would write.
 2. `node scripts/migrate.mjs --remote`
-3. `node scripts/set-password.mjs javanshir --remote`, then `ganira`.
+3. `node scripts/set-password.mjs javanshir --remote`, then
+   `node scripts/set-password.mjs ganira --remote --must-change`.
 4. `npx wrangler deploy`
 5. Deploy the site.
 

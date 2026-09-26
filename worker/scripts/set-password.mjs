@@ -1,11 +1,14 @@
 /**
  * Creates an account, or sets a new password on one:
  *
- *   node scripts/set-password.mjs ganira --remote
+ *   node scripts/set-password.mjs ganira --remote --must-change
  *
  * The password is hashed here, so it never leaves this machine — only the
  * salt and hash are written to KV. Setting a password signs that person out
  * of every device. Set PASSWORD in the environment to skip the prompt.
+ *
+ * --must-change makes them choose their own password the first time they sign
+ * in, so the one you typed here stops working — use it for anyone but you.
  */
 import { webcrypto as crypto } from "node:crypto";
 import readline from "node:readline";
@@ -50,6 +53,7 @@ if (!account) {
   process.exit(1);
 }
 const where = target(process.argv);
+const mustChange = process.argv.includes("--must-change");
 
 let password = process.env.PASSWORD;
 if (!password) {
@@ -69,7 +73,15 @@ const existing = kvGet(`user:${username}`, where);
 const salt = toHex(crypto.getRandomValues(new Uint8Array(16)));
 kvPut(
   `user:${username}`,
-  { ...account, salt, iterations: ITERATIONS, hash: await hash(password, salt), ver: (existing?.ver || 0) + 1 },
+  {
+    ...account,
+    salt,
+    iterations: ITERATIONS,
+    hash: await hash(password, salt),
+    ver: (existing?.ver || 0) + 1,
+    ...(mustChange ? { mustChange: true } : {}),
+  },
   where
 );
 console.log(`${existing ? "Updated" : "Created"} ${username} (${where.slice(2)}). Any device signed in as ${username} is now signed out.`);
+if (mustChange) console.log(`${username} will be asked to choose a new password on first sign-in.`);

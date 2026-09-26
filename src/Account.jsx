@@ -40,7 +40,8 @@ export function SignIn({ onSignedIn, title = "Nook" }) {
     setError(null);
     const { session, error: message } = await signIn(username.trim(), password);
     setBusy(false);
-    if (session) onSignedIn(session);
+    // The password goes along only so a forced change need not ask for it again.
+    if (session) onSignedIn(session, password);
     else {
       setError(message);
       setPassword("");
@@ -100,6 +101,75 @@ export function SignIn({ onSignedIn, title = "Nook" }) {
             {busy ? "Signing in…" : "Sign in"}
           </motion.button>
         </div>
+      </form>
+    </div>
+  );
+}
+
+/**
+ * Shown right after signing in with a password the admin set: nothing else
+ * opens until this account has chosen its own. The server enforces the same,
+ * so skipping this screen gets nowhere.
+ */
+export function ChooseNewPassword({ user, givenPassword, onDone, onSignedOut }) {
+  const [current, setCurrent] = useState(givenPassword || "");
+  const [next, setNext] = useState("");
+  const [again, setAgain] = useState("");
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const save = async (e) => {
+    e.preventDefault();
+    if (busy) return;
+    if (next.length < 8) return setError("Use at least 8 characters.");
+    if (next !== again) return setError("The two passwords do not match.");
+    if (next === current) return setError("Choose a password different from the one you were given.");
+    setBusy(true);
+    setError(null);
+    const message = await changePassword(current, next);
+    setBusy(false);
+    if (message) return setError(message);
+    onDone();
+  };
+
+  const leave = async () => {
+    await signOut();
+    onSignedOut();
+  };
+
+  return (
+    <div
+      style={{ background: TOKENS.bgDeep, minHeight: "100vh", fontFamily: "'Manrope', sans-serif" }}
+      className="w-full flex flex-col items-center justify-center px-4 py-8"
+    >
+      <form onSubmit={save} className="w-full max-w-sm flex flex-col items-center">
+        <h1 style={{ color: TOKENS.cream, fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: 24, textAlign: "center" }} className="mb-1">
+          Hi {user.name}
+        </h1>
+        <p style={{ color: TOKENS.muted, fontSize: 13.5, textAlign: "center" }} className="mb-7">
+          Choose your own password to continue.
+        </p>
+        <div style={cardStyle} className="flex flex-col gap-3">
+          {/* Only asked for if this device no longer has it, e.g. after a reload. */}
+          {!givenPassword && (
+            <input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} placeholder="Password you were given" autoComplete="current-password" style={inputStyle(false)} />
+          )}
+          <input type="password" value={next} onChange={(e) => setNext(e.target.value)} placeholder="New password" autoComplete="new-password" autoFocus style={inputStyle(!!error)} />
+          <input type="password" value={again} onChange={(e) => setAgain(e.target.value)} placeholder="New password again" autoComplete="new-password" style={inputStyle(!!error)} />
+          <p style={{ color: TOKENS.muted, fontSize: 11.5 }}>At least 8 characters. Only you will know it.</p>
+          {error && <p style={{ color: "#E07A8F", fontSize: 12.5 }}>{error}</p>}
+          <motion.button
+            type="submit"
+            whileTap={{ scale: 0.98 }}
+            disabled={busy}
+            style={{ height: 44, borderRadius: 9999, background: TOKENS.gold, color: TOKENS.bgDeep, fontWeight: 700, fontSize: 14, opacity: busy ? 0.6 : 1, marginTop: 4 }}
+          >
+            {busy ? "Saving…" : "Save and continue"}
+          </motion.button>
+        </div>
+        <button type="button" onClick={leave} style={{ color: TOKENS.muted, fontSize: 11.5 }} className="flex items-center gap-1 mt-5">
+          <LogOut size={11} /> Sign out
+        </button>
       </form>
     </div>
   );
@@ -170,7 +240,7 @@ function ResetPanel({ user, onClose }) {
         <p style={{ color: TOKENS.muted, fontSize: 11.5 }}>
           {done.own
             ? "Your other devices are signed out; this one stays in."
-            : `${done.name} is signed out on every device. Send her this password so she can sign in again.`}
+            : `${done.name} is signed out on every device. Send her this password — the first time she signs in with it, she will choose her own.`}
         </p>
         <button type="button" onClick={onClose} style={{ color: TOKENS.gold, fontSize: 12.5, fontWeight: 700, alignSelf: "flex-start" }}>
           Done
@@ -221,7 +291,7 @@ function ResetPanel({ user, onClose }) {
         <p style={{ color: TOKENS.muted, fontSize: 11 }}>Your other devices will be signed out; this one stays in.</p>
       )}
       {!own && (
-        <p style={{ color: TOKENS.muted, fontSize: 11 }}>{target.name} will be signed out on every device until she uses the new one.</p>
+        <p style={{ color: TOKENS.muted, fontSize: 11 }}>{target.name} will be signed out everywhere, and will choose her own password when she signs in with this one.</p>
       )}
       {error && <p style={{ color: "#E07A8F", fontSize: 12 }}>{error}</p>}
       <div className="flex items-center gap-4 mt-1">

@@ -106,7 +106,7 @@ export async function changePassword(current, next) {
     const body = await res.json().catch(() => ({}));
     if (!res.ok) return body.error || "Could not change the password.";
     const session = readSession();
-    if (session) saveSession({ ...session, token: body.token });
+    if (session) saveSession({ ...session, token: body.token, user: body.user || session.user });
     return null;
   } catch {
     return "Could not reach the server. Check the connection and try again.";
