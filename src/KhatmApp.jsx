@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { RotateCcw } from "lucide-react";
 import { TOKENS, alpha } from "./messages.js";
 import { cachedKhatm, docsAvailable, readKhatm, resetKhatm, toggleJuz } from "./doc.js";
+import { water } from "./garden.js";
 
 const JUZ_COUNT = 30;
 const HIM = "j";
@@ -51,6 +52,8 @@ export default function KhatmApp({ identity }) {
     // The server marks it for whoever is signed in, and if they claimed it
     // first it answers with their mark in place.
     const saved = await toggleJuz(n);
+    // Marking a juz you read waters the pomegranate; clearing one does not.
+    if (saved && saved.juz?.[key] === me) water("pomegranate");
 
     if (saved) {
       setJuz(saved.juz || {});

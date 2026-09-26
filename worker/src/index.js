@@ -28,6 +28,9 @@
  *   POST /khatm/toggle { juz }     marks or unmarks it as yours — never theirs
  *   POST /khatm/reset
  *
+ *   GET  /garden                   the shared garden's watering log
+ *   POST /garden/water { plant }   waters it for whoever is signed in, once a day
+ *
  *   GET /config, PUT /config (admin)   which apps each person's hub lists
  *
  *   POST /s, GET /s/:id                 write-once blobs behind a short id
@@ -47,6 +50,13 @@ const LOGIN_WINDOW = 15 * 60;
 const LOGIN_MAX_FAILURES = 5;
 const LOGIN_MAX_FAILURES_ACCOUNT = 30;
 const JUZ_COUNT = 30;
+// Each plant grows from one part of the app: olive from the Qur'an, pomegranate
+// from the khatm, rose from the 99 Names.
+const PLANTS = ["olive", "pomegranate", "rose"];
+
+// The garden's days turn over at midnight in Baku, wherever the Worker runs.
+const gardenDay = (at = new Date()) =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Baku", year: "numeric", month: "2-digit", day: "2-digit" }).format(at);
 // Ambiguous glyphs (0/o, 1/l/i) are left out so an id can be read aloud.
 const ALPHABET = "23456789abcdefghjkmnpqrstuvwxyz";
 const ID_LENGTH = 10;
@@ -269,6 +279,35 @@ async function readDocResponse(env, key, cors) {
   });
 }
 
+/**
+ * One entry per plant per day per person: `log[plant][day][userId] = time`.
+ * Watering twice in a day changes nothing, so no amount of tapping can rush
+ * the garden — only coming back on another day does.
+ */
+async function garden(request, env, cors, me, action) {
+  const key = "doc:garden";
+  if (request.method === "GET" && !action) return readDocResponse(env, key, cors);
+  if (request.method !== "POST" || action !== "water") return null;
+
+  const body = await readJsonBody(request);
+  if (body.error) return json({ error: body.error }, body.status, cors);
+  const plant = body.value?.plant;
+  if (!PLANTS.includes(plant)) return json({ error: "no such plant" }, 400, cors);
+
+  const doc = await readJson(env, key, {});
+  const day = gardenDay();
+  const log = { ...(doc.log || {}) };
+  const days = { ...(log[plant] || {}) };
+  const today = { ...(days[day] || {}) };
+  if (today[me.id]) return json(doc, 200, cors);
+  today[me.id] = new Date().toISOString();
+  days[day] = today;
+  log[plant] = days;
+  const next = { ...doc, planted: doc.planted || day, log, updated: new Date().toISOString() };
+  await env.STORE.put(key, JSON.stringify(next));
+  return json(next, 200, cors);
+}
+
 async function khatm(request, env, cors, me, action) {
   const key = "doc:khatm";
   if (request.method === "GET" && !action) return readDocResponse(env, key, cors);
@@ -334,6 +373,12 @@ async function route(request, env, cors, url) {
   // ---- the other person's documents: read, never write ----
   const theirs = pathname.match(/^\/users\/([a-z])\/doc\/([a-z][a-z0-9-]{0,30})$/);
   if (theirs && method === "GET") return readDocResponse(env, `u:${theirs[1]}:${theirs[2]}`, cors);
+
+  const gd = pathname.match(/^\/garden(?:\/(water))?$/);
+  if (gd) {
+    const res = await garden(request, env, cors, me, gd[1]);
+    if (res) return res;
+  }
 
   const k = pathname.match(/^\/khatm(?:\/(toggle|reset))?$/);
   if (k) {

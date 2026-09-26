@@ -27,6 +27,7 @@ its own the next time it signs in. Until it does, every route except
 | `GET` / `PUT /me/doc/:name` | your own document, stored as `u:<id>:<name>` |
 | `GET /users/:id/doc/:name` | the other person's document, read-only |
 | `GET /khatm`, `POST /khatm/toggle`, `POST /khatm/reset` | the one shared document; the server stamps each mark with whoever is signed in and will not clear the other person's |
+| `GET /garden`, `POST /garden/water` | the shared garden; `{ plant: "olive" \| "pomegranate" \| "rose" }` waters it for whoever is signed in, once per person per plant per day (days in Baku time) |
 | `GET /config`, `PUT /config` | which apps each hub lists; writing is admin-only |
 | `POST /s`, `GET /s/:id` | write-once blobs behind a short id |
 | `POST /c`, `GET` / `PUT /c/:id` | mutable collections; writing also needs the collection's own key |

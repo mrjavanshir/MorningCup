@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { BookOpenText, ChevronLeft, ChevronRight, Grid3x3, Heart, Shuffle, X } from "lucide-react";
 import { TOKENS, alpha } from "./messages.js";
 import { NAMES } from "./names.js";
 import { NAMES_AZ } from "./namesAz.js";
 import { cachedDoc, readDoc, updateDoc } from "./doc.js";
+import { water } from "./garden.js";
 
 const SEEN_KEY = "names-seen";
 const LANG_KEY = "names-lang";
@@ -84,6 +85,9 @@ export default function NamesApp() {
   const [index, setIndex] = useState(readStartIndex);
   const [dir, setDir] = useState(0);
   const [seen, setSeen] = useState(loadSeen);
+  // What had been opened before this visit, so only a new Name waters the rose.
+  const openedBefore = useRef(null);
+  if (openedBefore.current === null) openedBefore.current = new Set(seen);
   const [showIndex, setShowIndex] = useState(false);
   const [lang, setLang] = useState(() => (stored(LANG_KEY, "en") === "az" ? "az" : "en"));
   // Left open, the explanation follows you from name to name.
@@ -166,6 +170,11 @@ export default function NamesApp() {
       saveSeen(next);
       return next;
     });
+    // A Name you have not opened before waters the rose.
+    if (!openedBefore.current.has(name.n)) {
+      openedBefore.current.add(name.n);
+      water("rose");
+    }
   }, [name.n]);
 
   const go = (delta) => {

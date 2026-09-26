@@ -5,6 +5,7 @@ import { TOKENS, alpha } from "./messages.js";
 import { SURAHS, TOTAL_AYAHS } from "./surahs.js";
 import { cachedDoc, cachedUserDoc, docsAvailable, readDoc, readUserDoc, updateDoc } from "./doc.js";
 import SharePreview from "./SharePreview.jsx";
+import { water } from "./garden.js";
 
 const DOC = "reading";
 const HIM = "j";
@@ -278,6 +279,8 @@ export default function Quran({ identity }) {
       read: { ...(d.read || {}), [surah]: count },
     });
     setDoc((d) => apply(d));
+    // Reading forward waters the olive; undoing a surah does not.
+    if (bookmark && count > 0) water("olive");
     const saved = await updateDoc(DOC, (latest) => ({ ...apply(latest), updated: new Date().toISOString() }));
     if (saved) setDoc(saved);
   };
