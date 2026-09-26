@@ -13,7 +13,7 @@ import HighlightsGame from "./HighlightsGame.jsx";
 import NamesGame from "./NamesGame.jsx";
 import SharedSettings from "./SharedSettings.jsx";
 import KhatmGame from "./KhatmGame.jsx";
-import QuranGame from "./QuranGame.jsx";
+import Quran from "./Quran.jsx";
 import BirthdayGiftCard from "./BirthdayGiftCard.jsx";
 import { cachedViews, fetchViews, ME, readAsUser, readSession, setAsUser, signOut, unlockAdmin } from "./owner.js";
 import { applyTheme, currentTheme } from "./theme.js";
@@ -457,7 +457,7 @@ export default function App() {
             {route.id === "jar" && <VerseJarGame />}
             {route.id === "names" && <NamesGame />}
             {route.id === "khatm" && <KhatmGame identity={session.identity} />}
-            {route.id === "quran" && <QuranGame identity={session.identity} />}
+            {route.id === "quran" && <Quran identity={session.identity} />}
             {route.id === "close-day" && <CloseDayGame />}
             {route.id === "three-things" && <ThreeThingsGame />}
             {route.id === "highlights" && <HighlightsGame />}
