@@ -456,7 +456,10 @@ export default function NamesGame({ identity }) {
           <ChevronLeft size={17} />
         </motion.button>
         <motion.button
-          onClick={() => setShowIndex(true)}
+          onClick={() => {
+            setGridView("all");
+            setShowIndex(true);
+          }}
           whileTap={{ scale: 0.94 }}
           aria-label={t.grid}
           style={{
@@ -510,8 +513,19 @@ export default function NamesGame({ identity }) {
         </motion.button>
       </div>
 
+      <button
+        onClick={() => {
+          setGridView("liked");
+          setShowIndex(true);
+        }}
+        style={{ color: likedList.length ? LIKE_COLOR : TOKENS.muted, fontSize: 12, fontWeight: 700 }}
+        className="flex items-center gap-1.5 mt-5"
+      >
+        <Heart size={14} fill={likedList.length ? "currentColor" : "none"} /> {t.likedTab(likedList.length)}
+      </button>
+
       {lang === "az" && (
-        <div className="w-full flex flex-col items-center mt-5">
+        <div className="w-full flex flex-col items-center mt-3">
           <button
             onClick={toggleMore}
             aria-expanded={showMore}
