@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { RotateCcw } from "lucide-react";
+import { Plus, RotateCcw, Trash2 } from "lucide-react";
 import { TOKENS, alpha } from "./messages.js";
 import { cachedDoc, cachedUserDoc, readDoc, readUserDoc, updateDoc } from "./doc.js";
 import { gardenDay, water } from "./garden.js";
@@ -23,6 +23,20 @@ const PHRASES = [
 ];
 
 const PICK_KEY = "zikr-phrase";
+const MAX_CUSTOM = 20;
+const MAX_LENGTH = 60;
+
+const isArabic = (text) => /[\u0600-\u06FF]/.test(text);
+const sameText = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/** Your own phrases sit after the five fixed ones; only yours can be removed. */
+function phrasesOf(doc) {
+  const custom = Array.isArray(doc.custom) ? doc.custom : [];
+  return [
+    ...PHRASES,
+    ...custom.map((c) => ({ id: c.id, custom: true, text: c.text, tr: c.text, ar: isArabic(c.text) ? c.text : null })),
+  ];
+}
 
 function stored(key, fallback) {
   try {
@@ -44,23 +58,33 @@ const dayTotal = (doc, day) => Object.values((doc && doc.days && doc.days[day]) 
 export default function ZikrApp({ me }) {
   const them = me === HIM ? "g" : HIM;
   const theirName = me === HIM ? "Ganira" : "Javanshir";
-  const [phrase, setPhrase] = useState(() => {
-    const saved = stored(PICK_KEY, PHRASES[0].id);
-    return PHRASES.some((p) => p.id === saved) ? saved : PHRASES[0].id;
-  });
   const [doc, setDoc] = useState(() => cachedDoc(DOC) || {});
+  const [phrase, setPhrase] = useState(() => stored(PICK_KEY, PHRASES[0].id));
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [draftError, setDraftError] = useState(null);
+  const [confirmRemove, setConfirmRemove] = useState(null);
   const [theirs, setTheirs] = useState(() => cachedUserDoc(them, DOC) || {});
   // Taps not yet on the server, by phrase.
   const pending = useRef({});
   const timer = useRef(null);
+  // This device's writes go out one after another, so saving taps and
+  // changing the list never overwrite each other.
+  const queue = useRef(Promise.resolve());
+  const inTurn = (job) => {
+    queue.current = queue.current.then(job, job);
+    return queue.current;
+  };
   const [pulse, setPulse] = useState(0);
 
   const today = gardenDay();
   const counts = (doc.days && doc.days[today]) || {};
-  const count = counts[phrase] || 0;
+  const phrases = phrasesOf(doc);
+  // A remembered phrase that has since been removed falls back to the first.
+  const current = phrases.find((p) => p.id === phrase) || PHRASES[0];
+  const count = counts[current.id] || 0;
   const inRound = count % ROUND;
   const rounds = Math.floor(count / ROUND);
-  const current = PHRASES.find((p) => p.id === phrase);
 
   useEffect(() => {
     let cancelled = false;
@@ -75,8 +99,12 @@ export default function ZikrApp({ me }) {
     };
   }, [them]);
 
-  const flush = async () => {
+  const flush = () => {
     clearTimeout(timer.current);
+    return inTurn(saveTaps);
+  };
+
+  const saveTaps = async () => {
     const sending = pending.current;
     if (!Object.keys(sending).length) return;
     pending.current = {};
@@ -119,10 +147,10 @@ export default function ZikrApp({ me }) {
     const next = count + 1;
     setDoc((d) => {
       const days = { ...(d.days || {}) };
-      days[today] = { ...(days[today] || {}), [phrase]: next };
+      days[today] = { ...(days[today] || {}), [current.id]: next };
       return { ...d, days };
     });
-    pending.current[phrase] = (pending.current[phrase] || 0) + 1;
+    pending.current[current.id] = (pending.current[current.id] || 0) + 1;
     clearTimeout(timer.current);
     timer.current = setTimeout(flush, SAVE_AFTER_MS);
     setPulse((p) => p + 1);
@@ -145,6 +173,38 @@ export default function ZikrApp({ me }) {
     }
   };
 
+  const addPhrase = async (e) => {
+    e.preventDefault();
+    const text = draft.trim().replace(/\s+/g, " ");
+    if (!text) return setDraftError("Write the zikr first.");
+    if (text.length > MAX_LENGTH) return setDraftError(`Keep it under ${MAX_LENGTH} characters.`);
+    if (phrases.some((p) => sameText(p.tr, text) || (p.ar && sameText(p.ar, text)))) return setDraftError("That one is already on the list.");
+    if (phrases.length - PHRASES.length >= MAX_CUSTOM) return setDraftError(`You can keep up to ${MAX_CUSTOM} of your own.`);
+    const entry = { id: `c-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, text, at: new Date().toISOString() };
+    const withIt = (d) => {
+      const list = Array.isArray(d.custom) ? d.custom : [];
+      return list.some((c) => c.id === entry.id) ? d : { ...d, custom: [...list, entry] };
+    };
+    setDoc((d) => withIt(d));
+    pick(entry.id);
+    setDraft("");
+    setDraftError(null);
+    setAdding(false);
+    const saved = await inTurn(() => updateDoc(DOC, (latest) => ({ ...withIt(latest), updated: new Date().toISOString() })));
+    if (saved) setDoc((d) => ({ ...saved, days: d.days }));
+  };
+
+  // Past counts for a removed phrase stay in the day totals; they were said.
+  const removePhrase = async (id) => {
+    if (confirmRemove !== id) return setConfirmRemove(id);
+    setConfirmRemove(null);
+    const without = (d) => ({ ...d, custom: (Array.isArray(d.custom) ? d.custom : []).filter((c) => c.id !== id) });
+    setDoc((d) => without(d));
+    pick(PHRASES[0].id);
+    const saved = await inTurn(() => updateDoc(DOC, (latest) => ({ ...without(latest), updated: new Date().toISOString() })));
+    if (saved) setDoc((d) => ({ ...saved, days: d.days }));
+  };
+
   const R = 92;
   const circumference = 2 * Math.PI * R;
   const myToday = dayTotal(doc, today);
@@ -160,23 +220,85 @@ export default function ZikrApp({ me }) {
       </p>
 
       <div className="w-full flex gap-1.5 mb-5" style={{ flexWrap: "wrap", justifyContent: "center" }}>
-        {PHRASES.map((p) => (
+        {phrases.map((p) => (
           <button
             key={p.id}
-            onClick={() => pick(p.id)}
+            onClick={() => {
+              pick(p.id);
+              setConfirmRemove(null);
+            }}
+            dir={p.ar && p.custom ? "rtl" : undefined}
             style={{
-              fontSize: 10.5,
+              fontSize: p.ar && p.custom ? 13 : 10.5,
+              fontFamily: p.ar && p.custom ? "'Amiri', serif" : undefined,
               fontWeight: 700,
               padding: "5px 11px",
               borderRadius: 9999,
-              border: `1px solid ${phrase === p.id ? alpha(TOKENS.gold, "66") : TOKENS.line}`,
-              color: phrase === p.id ? TOKENS.gold : TOKENS.muted,
+              maxWidth: 170,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              border: `1px solid ${current.id === p.id ? alpha(TOKENS.gold, "66") : p.custom ? alpha(TOKENS.gold, "2A") : TOKENS.line}`,
+              color: current.id === p.id ? TOKENS.gold : TOKENS.muted,
             }}
           >
             {p.tr}
           </button>
         ))}
+        {!adding && (
+          <button
+            onClick={() => setAdding(true)}
+            aria-label="Add your own zikr"
+            style={{ fontSize: 10.5, fontWeight: 700, padding: "5px 10px", borderRadius: 9999, border: `1px dashed ${TOKENS.line}`, color: TOKENS.muted }}
+            className="flex items-center gap-1"
+          >
+            <Plus size={11} /> Add
+          </button>
+        )}
       </div>
+
+      {adding && (
+        <form onSubmit={addPhrase} className="w-full flex flex-col gap-2 mb-5">
+          <input
+            value={draft}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              setDraftError(null);
+            }}
+            placeholder="e.g. SubhanAllahi wa bihamdihi — or in Arabic"
+            maxLength={MAX_LENGTH + 20}
+            autoFocus
+            dir="auto"
+            style={{
+              width: "100%",
+              background: TOKENS.bgDeep,
+              border: `1px solid ${draftError ? "#C4184F" : TOKENS.line}`,
+              borderRadius: 10,
+              color: TOKENS.cream,
+              fontFamily: isArabic(draft) ? "'Amiri', serif" : "'Manrope', sans-serif",
+              fontSize: isArabic(draft) ? 18 : 14,
+              padding: "10px 12px",
+            }}
+          />
+          {draftError && <p style={{ color: "#E07A8F", fontSize: 12 }}>{draftError}</p>}
+          <div className="flex items-center gap-4">
+            <button type="submit" style={{ color: TOKENS.gold, fontSize: 12.5, fontWeight: 700 }}>
+              Add to the list
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAdding(false);
+                setDraft("");
+                setDraftError(null);
+              }}
+              style={{ color: TOKENS.muted, fontSize: 12.5 }}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
 
       <motion.button
         onClick={tap}
@@ -211,17 +333,34 @@ export default function ZikrApp({ me }) {
           />
         </svg>
         <motion.div key={pulse} initial={{ scale: 1.06 }} animate={{ scale: 1 }} transition={{ duration: 0.18 }} className="flex flex-col items-center justify-center" style={{ position: "absolute", inset: 0 }}>
-          <span dir="rtl" lang="ar" style={{ color: TOKENS.gold, fontFamily: "'Amiri', serif", fontSize: 25, lineHeight: 1.6 }}>
-            {current.ar}
-          </span>
+          {current.ar ? (
+            <span dir="rtl" lang="ar" style={{ display: "block", color: TOKENS.gold, fontFamily: "'Amiri', serif", fontSize: current.ar.length > 20 ? 18 : 25, lineHeight: 1.55, maxWidth: 148, whiteSpace: "normal", textAlign: "center" }}>
+              {current.ar}
+            </span>
+          ) : (
+            <span style={{ display: "block", color: TOKENS.gold, fontFamily: "'Fraunces', serif", fontSize: current.tr.length > 24 ? 14 : 18, lineHeight: 1.3, maxWidth: 148, whiteSpace: "normal", textAlign: "center", marginBottom: 4 }}>
+              {current.tr}
+            </span>
+          )}
           <span style={{ color: TOKENS.cream, fontFamily: "'Fraunces', serif", fontSize: 44, fontWeight: 600, lineHeight: 1.1 }}>{inRound}</span>
           <span style={{ color: TOKENS.muted, fontSize: 11 }}>of {ROUND}</span>
         </motion.div>
       </motion.button>
 
-      <p style={{ color: TOKENS.cream, fontSize: 13, textAlign: "center" }} className="mt-4">
-        {current.meaning}
-      </p>
+      {current.meaning && (
+        <p style={{ color: TOKENS.cream, fontSize: 13, textAlign: "center" }} className="mt-4">
+          {current.meaning}
+        </p>
+      )}
+      {current.custom && (
+        <button
+          onClick={() => removePhrase(current.id)}
+          style={{ color: confirmRemove === current.id ? "#E07A8F" : TOKENS.muted, fontSize: 11.5 }}
+          className="flex items-center gap-1.5 mt-4"
+        >
+          <Trash2 size={12} /> {confirmRemove === current.id ? "Tap again to remove it" : "Remove from my list"}
+        </button>
+      )}
       <p style={{ color: TOKENS.muted, fontSize: 11.5, textAlign: "center" }} className="mt-1">
         {count} today{rounds > 0 && ` · ${rounds} ${rounds === 1 ? "round" : "rounds"}`}
       </p>
@@ -241,10 +380,10 @@ export default function ZikrApp({ me }) {
             const back = inRound;
             setDoc((d) => {
               const days = { ...(d.days || {}) };
-              days[today] = { ...(days[today] || {}), [phrase]: count - back };
+              days[today] = { ...(days[today] || {}), [current.id]: count - back };
               return { ...d, days };
             });
-            pending.current[phrase] = (pending.current[phrase] || 0) - back;
+            pending.current[current.id] = (pending.current[current.id] || 0) - back;
             clearTimeout(timer.current);
             timer.current = setTimeout(flush, SAVE_AFTER_MS);
           }}
