@@ -11,8 +11,8 @@ const COPY = {
   note: [
     "Qənirə,",
     "Bilirəm, bu günlərdə içində bir sıxıntı var.",
-    "Sənin adına niyyət edib bir yardım etdim. Qoy o savab sənə yazılsın, Allah ürəyindəki ağırlığı götürsün, yerinə rahatlıq qoysun.",
-    "Bu güllər də ondandır ki, biləsən: tək deyilsən.",
+    "Sənə gül göndərə bilərdim, amma güllər bir neçə günə solur. Mən isə sənə solmayan bir şey vermək istədim. Sənin adına niyyət edib bir ehtiyacı olana yardım etdim. Qoy o savab sənə yazılsın, Allah ürəyindəki ağırlığı götürsün.",
+    "Bu güllər isə solmayanlardır.",
   ],
   verse: {
     arabic: "فَإِنَّ مَعَ الْعُسْرِ يُسْرًا",
