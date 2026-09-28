@@ -48,7 +48,7 @@ const html = fs.readFileSync(path.join(dist, "index.html"), "utf8");
  * screen under that name, and the shared favicon/apple-touch-icon. Title and
  * description are swapped for something that stands on its own.
  */
-function stripPwa(html) {
+function stripPwa(html, { emoji, title, description }) {
   return html
     .replace(/<link rel="manifest"[^>]*>\s*/, "")
     .replace(/<script id="vite-plugin-pwa:register-sw"[^>]*><\/script>\s*/, "")
@@ -60,14 +60,24 @@ function stripPwa(html) {
     .replace(
       /<link rel="icon"[^>]*>/,
       `<link rel="icon" href="data:image/svg+xml,${encodeURIComponent(
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="82" font-size="80">🎂</text></svg>',
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="82" font-size="80">${emoji}</text></svg>`,
       )}" />`,
     )
-    .replace(/<meta name="description"[^>]*\/>/, '<meta name="description" content="A little birthday surprise." />')
-    .replace(/<title>[^<]*<\/title>/, "<title>Happy Birthday</title>");
+    .replace(/<meta name="description"[^>]*\/>/, `<meta name="description" content="${description}" />`)
+    .replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`);
 }
 
-const birthdayHtml = ids.includes("birthday") ? stripPwa(html) : null;
+// The roses page is the same kind of one-off gift, so it gets the same
+// treatment under its own name.
+const GIFTS = {
+  birthday: { emoji: "🎂", title: "Happy Birthday", description: "A little birthday surprise." },
+  roses: { emoji: "🌹", title: "Sənin üçün", description: "Bir neçə gül və bir qeyd." },
+};
+const giftHtml = Object.fromEntries(
+  Object.entries(GIFTS)
+    .filter(([id]) => ids.includes(id))
+    .map(([id, meta]) => [id, stripPwa(html, meta)]),
+);
 
 // Everything was under /games before it became /apps. Those links are out in
 // messages already, so they get real pages too; the app moves the address
@@ -78,7 +88,7 @@ const routes = [...current, ...renamed, ...legacy];
 for (const route of routes) {
   const dir = path.join(dist, route);
   fs.mkdirSync(dir, { recursive: true });
-  const body = /^(apps|games)\/birthday$/.test(route) && birthdayHtml ? birthdayHtml : html;
+  const body = giftHtml[route.replace(/^(apps|games)\//, "")] ?? html;
   fs.writeFileSync(path.join(dir, "index.html"), body);
 }
 

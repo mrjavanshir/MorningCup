@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { BookMarked, BookOpen, CircleDot, Sparkle, Sprout, ArrowUpFromLine, Cake, Check, Eraser, Gift, Link2, Moon, NotebookPen, Scale, Scroll, Stamp, Sun, Sunrise, Sunset } from "lucide-react";
+import { BookMarked, BookOpen, CircleDot, Sparkle, Sprout, ArrowUpFromLine, Cake, Check, Eraser, Flower2,Gift, Link2, Moon, NotebookPen, Scale, Scroll, Stamp, Sun, Sunrise, Sunset } from "lucide-react";
 import { TOKENS, alpha } from "./messages.js";
 import SunApp from "./SunApp.jsx";
 import DaybreakApp from "./DaybreakApp.jsx";
@@ -17,6 +17,7 @@ import Quran from "./Quran.jsx";
 import GardenApp, { GardenWidget } from "./GardenApp.jsx";
 import ZikrApp from "./ZikrApp.jsx";
 import BirthdayGiftCard from "./BirthdayGiftCard.jsx";
+import RosesGift from "./RosesGift.jsx";
 import { cachedViews, fetchViews, readAsUser, setAsUser } from "./owner.js";
 import { readSession, refreshUser, SIGNED_OUT_EVENT } from "./auth.js";
 import { AccountFooter, ChooseNewPassword, SignIn } from "./Account.jsx";
@@ -41,6 +42,7 @@ const APPS = [
   { id: "zikr", icon: CircleDot, title: "Zikr", desc: "A tasbih — 33 a day waters the garden.", shared: true },
   { id: "garden", icon: Sprout, title: "Our Garden", desc: "Grows when either of you reads.", shared: true },
   { id: "birthday", icon: Cake, title: "Birthday Card", desc: "Open the box.", shared: false },
+  { id: "roses", icon: Flower2, title: "Roses", desc: "Tap the rose, open the note.", shared: false },
   { id: "close-day", icon: Eraser, title: "Close the Day", desc: "Dump it out, watch it go.", night: true, shared: true },
   { id: "three-things", icon: NotebookPen, title: "Three Good Things", desc: "Log what went well today.", night: true, shared: true },
   { id: "highlights", icon: Sunset, title: "Highlights", desc: "Both share the best bit.", night: true, shared: true },
@@ -149,7 +151,8 @@ export default function App() {
     return <div style={{ background: TOKENS.bgDeep, minHeight: "100vh" }} />;
   }
 
-  // The birthday card's link never names the app (see scripts/prerender.mjs).
+  // The gift links never name the app (see scripts/prerender.mjs).
+  const isGift = route.id === "birthday" || route.id === "roses";
   if (!session) {
     return (
       <SignIn
@@ -157,7 +160,7 @@ export default function App() {
           setGivenPassword(s.user.mustChange ? password : null);
           setSession(s);
         }}
-        title={route.id === "birthday" ? null : undefined}
+        title={isGift ? null : undefined}
       />
     );
   }
@@ -184,6 +187,7 @@ export default function App() {
   // nothing above it. Returned before the app chrome rather than inside it: a
   // greeting and a theme toggle framing a gift would undo it.
   if (route.view === "app" && route.id === "birthday") return <BirthdayGiftCard admin={asAdmin} />;
+  if (route.view === "app" && route.id === "roses") return <RosesGift />;
 
   const activeApp = route.view === "app" ? APPS.find((g) => g.id === route.id) : null;
   const isNight = !!activeApp?.night;
