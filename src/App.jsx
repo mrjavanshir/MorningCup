@@ -80,7 +80,18 @@ function nightLockHour() {
   return now >= 4 && now < h ? h : null;
 }
 
+/**
+ * The roses page is a gift sent as a bare link: it opens without signing in,
+ * and is rendered on its own, before any of the app's session, hub or
+ * navigation exists — so there is nothing in it that leads anywhere else.
+ */
 export default function App() {
+  const [route] = useState(parseRoute);
+  if (route.view === "app" && route.id === "roses") return <RosesGift />;
+  return <SignedInApp />;
+}
+
+function SignedInApp() {
   const [route, setRoute] = useState(parseRoute);
   const [lockHour] = useState(nightLockHour);
   const [copiedId, setCopiedId] = useState(null);
@@ -152,7 +163,7 @@ export default function App() {
   }
 
   // The gift links never name the app (see scripts/prerender.mjs).
-  const isGift = route.id === "birthday" || route.id === "roses";
+  const isGift = route.id === "birthday";
   if (!session) {
     return (
       <SignIn
@@ -187,7 +198,6 @@ export default function App() {
   // nothing above it. Returned before the app chrome rather than inside it: a
   // greeting and a theme toggle framing a gift would undo it.
   if (route.view === "app" && route.id === "birthday") return <BirthdayGiftCard admin={asAdmin} />;
-  if (route.view === "app" && route.id === "roses") return <RosesGift />;
 
   const activeApp = route.view === "app" ? APPS.find((g) => g.id === route.id) : null;
   const isNight = !!activeApp?.night;

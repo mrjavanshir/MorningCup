@@ -38,6 +38,11 @@ export default defineConfig({
         // back to the precached index.html covers every route offline instead,
         // and avoids shipping a dozen identical copies of the same HTML.
         navigateFallback: "/MorningCup/index.html",
+        // The roses link must always load its own page from the network —
+        // stripped of the app's name, manifest and install prompt (see
+        // scripts/prerender.mjs) — even on a phone that already has this
+        // worker installed from using the rest of the app.
+        navigateFallbackDenylist: [/\/(apps|games)\/roses\/?$/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\//,
