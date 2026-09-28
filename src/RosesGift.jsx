@@ -34,34 +34,37 @@ const C = {
 const VB = { w: 400, h: 540 };
 const TIE = { x: 200, y: 446 };
 
-// Each rose: the cubic curve of its stem (bottom → flower), the flower's size,
-// and how it faces the viewer. The stems cross inside the bow.
-const ROSES = [
-  {
-    seed: 11,
-    stem: [[201, 538], [202, 420], [197, 300], [200, 196]],
-    size: 272,
-    view: { yaw: 0.3, lean: 0, tilt: 0.56 },
-    delay: 0,
-    dur: 5200,
-  },
-  {
-    seed: 29,
-    stem: [[226, 536], [205, 455], [140, 380], [98, 292]],
-    size: 212,
-    view: { yaw: 1.7, lean: 0.34, tilt: 0.4 },
-    delay: 2600,
-    dur: 4600,
-  },
-  {
-    seed: 47,
-    stem: [[175, 536], [196, 455], [262, 390], [304, 306]],
-    size: 206,
-    view: { yaw: 4.1, lean: -0.32, tilt: 0.44 },
-    delay: 4200,
-    dur: 4600,
-  },
+// Where each flower sits (the top of its stem) and how big it is, back row
+// first so the rows in front are drawn over it. Eleven: flowers are given in
+// odd numbers.
+const HEADS = [
+  [122, 206, 150], [180, 184, 156], [240, 186, 154], [292, 210, 148],
+  [82, 262, 152], [148, 248, 162], [220, 250, 162], [306, 266, 150],
+  [128, 312, 160], [200, 302, 168], [274, 314, 158],
 ];
+
+// Each rose: the cubic curve of its stem (bottom → flower), the flower's size,
+// and how it faces the viewer. Every stem passes through the bow, and they
+// cross there, so the bottoms fan out mirrored.
+const ROSES = HEADS.map(([x, y, size], i) => {
+  const off = x - TIE.x;
+  const stem = [
+    [TIE.x - off * 0.16, 538],
+    [TIE.x - off * 0.04, 480],
+    [TIE.x + off * 0.5, TIE.y + (y - TIE.y) * 0.55],
+    [x, y],
+  ];
+  // Opening ripples out from the middle of the front row.
+  const dist = Math.hypot(x - 200, (y - 302) * 1.3);
+  return {
+    seed: 11 + i * 18,
+    stem,
+    size,
+    view: { yaw: (i * 2.39) % 6.28, lean: -off / 330, tilt: 0.5 + ((i * 7) % 5) * 0.04 },
+    delay: 300 + dist * 26,
+    dur: 4200 + ((i * 5) % 4) * 250,
+  };
+});
 const BLOOM_MS = Math.max(...ROSES.map((r) => r.delay + r.dur));
 const BUD_OPEN = 0.03;
 // Past this the outer petals fold right down and it reads as a peony.
@@ -251,7 +254,7 @@ function Head({ index, rose, shown, instant, openAt, swaying }) {
         // The buds arrive once the stems have reached them.
         transition: instant
           ? "none"
-          : `transform 1.1s cubic-bezier(.2,.9,.3,1.12) ${1.6 + 0.2 * index}s, opacity .5s ease ${1.6 + 0.2 * index}s`,
+          : `transform 1.1s cubic-bezier(.2,.9,.3,1.12) ${1.5 + 0.09 * index}s, opacity .5s ease ${1.5 + 0.09 * index}s`,
       }}
     >
       <div
@@ -266,14 +269,22 @@ function Head({ index, rose, shown, instant, openAt, swaying }) {
 
 // ── Stems, leaves, thorns, bow ──────────────────────────────────────────────
 
+// Some on the outer stems below the flowers, and some high on the back stems
+// so they show between the heads, the way foliage does in a real bouquet.
 const LEAVES = [
-  { rose: 0, t: 0.55, angle: -24, len: 74 },
-  { rose: 0, t: 0.8, angle: 204, len: 54 },
-  { rose: 1, t: 0.6, angle: 198, len: 66 },
-  { rose: 2, t: 0.56, angle: -12, len: 64 },
+  { rose: 4, t: 0.6, angle: 196, len: 66 },
+  { rose: 7, t: 0.6, angle: -16, len: 64 },
+  { rose: 8, t: 0.5, angle: 206, len: 56 },
+  { rose: 10, t: 0.5, angle: -26, len: 56 },
+  { rose: 0, t: 0.9, angle: 214, len: 62 },
+  { rose: 3, t: 0.9, angle: -34, len: 62 },
+  { rose: 1, t: 0.94, angle: 250, len: 56 },
+  { rose: 2, t: 0.94, angle: -70, len: 56 },
+  { rose: 4, t: 0.94, angle: 176, len: 54 },
+  { rose: 7, t: 0.94, angle: 4, len: 54 },
 ];
 
-const THORNS = [0.2, 0.36, 0.5, 0.7, 0.86];
+const THORNS = [0.3, 0.55, 0.8];
 
 function leafletPath(l, w, seed) {
   const N = 11;
@@ -409,7 +420,7 @@ function Stems({ grown, instant }) {
         const [x, y] = bez(ROSES[lf.rose].stem, lf.t);
         return (
           <g key={k} transform={`translate(${x},${y}) rotate(${lf.angle})`}>
-            <g style={{ ...later(1.3 + k * 0.18, 0.9), transformBox: "view-box", transformOrigin: "0px 0px" }}>
+            <g style={{ ...later(1.3 + k * 0.08, 0.9), transformBox: "view-box", transformOrigin: "0px 0px" }}>
               <CompoundLeaf len={lf.len} />
             </g>
           </g>
@@ -467,7 +478,9 @@ function Petal({ size, hue }) {
           <stop offset="1" stopColor={c} />
         </radialGradient>
       </defs>
-      <path d="M12 31 C5 27 0.5 18 1.5 10 C2.5 3.5 7.5 0.5 12 3 C16.5 0.5 21.5 3.5 22.5 10 C23.5 18 19 27 12 31 Z" fill={`url(#${id})`} />
+      {/* Narrow at the base, one broad rounded top — no notch, so it reads
+          as a petal and not a heart. */}
+      <path d="M12 31 C6.5 28.5 1.2 21 1.4 13 C1.6 6 6 1.6 12.6 1.4 C18.6 1.2 22.8 5.4 22.6 12.2 C22.4 20.4 17.6 28.2 12 31 Z" fill={`url(#${id})`} />
       <path d="M4 9 C6 5 9 4 11.5 5.5" stroke="#fff" strokeOpacity="0.18" strokeWidth="1.2" fill="none" strokeLinecap="round" />
     </svg>
   );
@@ -706,12 +719,21 @@ function WaxSeal() {
       />
       <circle cx="20" cy="20" r="11.5" fill="none" stroke="#5a0a14" strokeOpacity="0.55" strokeWidth="1.4" />
       <circle cx="20" cy="20" r="11.5" fill="none" stroke="#e46b76" strokeOpacity="0.3" strokeWidth="0.6" transform="translate(-0.6,-0.6)" />
+      {/* A rose seen from above, pressed into the wax as a spiral. */}
       <path
-        d="M20 26 C15 22.5 13 20 13 17.5 C13 15.5 14.6 14 16.4 14 C18 14 19.3 15 20 16.3 C20.7 15 22 14 23.6 14 C25.4 14 27 15.5 27 17.5 C27 20 25 22.5 20 26 Z"
-        fill="#6e0f1b"
-        stroke="#d45662"
-        strokeOpacity="0.35"
-        strokeWidth="0.6"
+        d="M20 20 C21.5 19 22.2 21 20.8 22 C18.8 23.2 17 21 18 19 C19.2 16.8 22.6 16.8 23.8 19.4 C25 22.4 22.6 25.4 19.4 25.2 C15.6 25 13.8 21.4 15 18 C16.4 14.4 21 13 24.4 15.2"
+        fill="none"
+        stroke="#5c0a15"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+      />
+      <path
+        d="M20 20 C21.5 19 22.2 21 20.8 22 C18.8 23.2 17 21 18 19 C19.2 16.8 22.6 16.8 23.8 19.4 C25 22.4 22.6 25.4 19.4 25.2 C15.6 25 13.8 21.4 15 18 C16.4 14.4 21 13 24.4 15.2"
+        fill="none"
+        stroke="#e46b76"
+        strokeOpacity="0.3"
+        strokeWidth="0.5"
+        transform="translate(-0.5,-0.5)"
       />
     </svg>
   );
