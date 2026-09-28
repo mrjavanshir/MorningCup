@@ -1,88 +1,58 @@
 /**
- * Draws some of the bouquet's roses off the main thread. Each rose's canvas
- * is handed over as an OffscreenCanvas; this worker runs its own frame loop,
- * works out from the shared bloom start time how open each of its roses
- * should be, and repaints the ones that changed — so eleven flowers opening
- * together never hold up the page's own animations or a tap.
+ * Renders the bouquet's roses ahead of time, off the main thread, as a
+ * sequence of still frames from bud to full bloom. The page then plays the
+ * bloom back by blending neighbouring frames, which costs next to nothing —
+ * drawing the flowers live while they opened was too heavy for a phone.
  *
  * Messages in:
- *   { type: "add", id, canvas, seed, view, delay, dur, bud, full }
- *   { type: "size", id, px }
- *   { type: "bloom", at }   // epoch ms (timeOrigin + now) the bloom started
+ *   { type: "buds", roses: [{ id, seed, view, px }], bud }
+ *       just the closed bud of each (frame 0), so they can appear at once
+ *   { type: "bake", roses: [{ id, seed, view, px }], frames, bud, full, low }
+ *       frames 1…frames-1; all but the last at `low` × px, the last at full
+ *       size with the fine mesh, since that is the one that stays on screen;
+ *       the rest with the lightest one, since each is only seen in passing
+ * Messages out:
+ *   { id, k, bitmap }   one frame (the bitmap is transferred)
+ *   { done: true }      a "bake" message has been fully rendered
  */
 import { drawRose, makeRose } from "./rose3d.js";
 
-const roses = new Map();
-let bloomAt = null;
+const models = new Map();
+const model = (seed) => {
+  if (!models.has(seed)) models.set(seed, makeRose(seed));
+  return models.get(seed);
+};
 
-const easeInOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
-const epochNow = () => performance.timeOrigin + performance.now();
-
-function openOf(r, now) {
-  if (bloomAt === null) return r.bud;
-  const x = (now - bloomAt - r.delay) / r.dur;
-  return r.bud + (r.full - r.bud) * easeInOut(Math.min(1, Math.max(0, x)));
-}
-
-const nextFrame = self.requestAnimationFrame
-  ? (fn) => self.requestAnimationFrame(fn)
-  : (fn) => setTimeout(fn, 16);
-
-let running = false;
-function tick() {
-  const now = epochNow();
-  let busy = false;
-  for (const r of roses.values()) {
-    if (!r.canvas.width) continue;
-    const open = openOf(r, now);
-    if (Math.abs(open - r.last) > 0.0004) {
-      drawRose(r.ctx, r.model, open, r.canvas.width, r.view);
-      r.last = open;
-      r.fineDone = false;
-      r.movedAt = now;
-      busy = true;
-    } else if (!r.fineDone && now - r.movedAt > 150) {
-      drawRose(r.ctx, r.model, open, r.canvas.width, r.view, true);
-      r.fineDone = true;
-    }
-    if (!r.fineDone) busy = true;
+// One canvas per size, reused: setting up a fresh canvas and context for
+// every frame cost far more than drawing the rose into it.
+const canvases = new Map();
+function render(r, open, px, mesh) {
+  let c = canvases.get(px);
+  if (!c) {
+    const canvas = new OffscreenCanvas(px, px);
+    c = { canvas, ctx: canvas.getContext("2d") };
+    canvases.set(px, c);
   }
-  const waiting = bloomAt !== null && [...roses.values()].some((r) => now < bloomAt + r.delay + r.dur);
-  if (busy || waiting) nextFrame(tick);
-  else running = false;
-}
-
-function wake() {
-  if (running) return;
-  running = true;
-  nextFrame(tick);
+  drawRose(c.ctx, model(r.seed), open, px, r.view, mesh);
+  return c.canvas.transferToImageBitmap();
 }
 
 self.onmessage = ({ data }) => {
-  if (data.type === "add") {
-    const { id, canvas, seed, view, delay, dur, bud, full } = data;
-    roses.set(id, {
-      canvas,
-      ctx: canvas.getContext("2d"),
-      model: makeRose(seed),
-      view,
-      delay,
-      dur,
-      bud,
-      full,
-      last: -1,
-      fineDone: false,
-      movedAt: 0,
-    });
-  } else if (data.type === "size") {
-    const r = roses.get(data.id);
-    if (r && data.px > 0 && data.px !== r.canvas.width) {
-      r.canvas.width = data.px;
-      r.canvas.height = data.px;
-      r.last = -1;
+  if (data.type === "buds") {
+    for (const r of data.roses) {
+      const bitmap = render(r, data.bud, r.px, "coarse");
+      self.postMessage({ id: r.id, k: 0, bitmap }, [bitmap]);
     }
-  } else if (data.type === "bloom") {
-    bloomAt = data.at;
+  } else if (data.type === "bake") {
+    const { frames, bud, full, low } = data;
+    for (const r of data.roses) {
+      for (let k = 1; k < frames; k++) {
+        const last = k === frames - 1;
+        const px = last ? r.px : Math.max(32, Math.round(r.px * low));
+        const bitmap = render(r, bud + ((full - bud) * k) / (frames - 1), px, last ? "fine" : "draft");
+        self.postMessage({ id: r.id, k, bitmap }, [bitmap]);
+      }
+    }
+    self.postMessage({ done: true });
   }
-  wake();
 };

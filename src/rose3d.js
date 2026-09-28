@@ -400,10 +400,13 @@ const GREEN_HIP = { aoBase: 1, aoTip: 0, edge: 0, tone: 0, lift: 1, spec: 0.12 }
 const GREEN_SEPAL = { aoBase: 1, aoTip: 0, edge: 0.4, tone: 0, lift: 1, spec: 0.1, layered: true };
 const byDepth = (a, b) => QD[a] - QD[b];
 
-export function drawRose(ctx, rose, open, size, view = {}, fine = false) {
+// Mesh density: "draft" for frames that are only on screen for a moment,
+// "coarse" for everything else in motion, "fine" for a flower at rest.
+const MESH = { draft: [7, 9], coarse: [8, 11], fine: [MAX_NU, MAX_NV] };
+
+export function drawRose(ctx, rose, open, size, view = {}, mesh = "coarse") {
   const { yaw = 0, lean = 0, tilt = 0.5 } = view;
-  NU = fine ? MAX_NU : 8;
-  NV = fine ? MAX_NV : 11;
+  [NU, NV] = MESH[mesh === true ? "fine" : mesh || "coarse"];
   const cam = {
     cy: Math.cos(yaw), sy: Math.sin(yaw),
     cl: Math.cos(lean), sl: Math.sin(lean),
@@ -448,26 +451,29 @@ export function drawRose(ctx, rose, open, size, view = {}, fine = false) {
   }
 
   ctx.clearRect(0, 0, size, size);
-  ctx.lineJoin = "round";
-  ctx.lineWidth = Math.max(0.6, size / 600);
+  // Each quad is grown slightly about its centre so neighbours overlap and
+  // no hairline seam shows between them. (Stroking every quad in its own
+  // colour does the same job but more than doubles the cost of painting.)
+  const grow = Math.max(0.45, size / 900);
   let last = -1;
   for (let j = 0; j < k; j++) {
     const q = ORDER[j];
     const o = q * 8;
     if (QC[q] !== last) {
       last = QC[q];
-      const st = style(last);
-      ctx.fillStyle = st;
-      ctx.strokeStyle = st; // closes the hairline seams between quads
+      ctx.fillStyle = style(last);
     }
+    const cx = (QP[o] + QP[o + 2] + QP[o + 4] + QP[o + 6]) * 0.25;
+    const cy = (QP[o + 1] + QP[o + 3] + QP[o + 5] + QP[o + 7]) * 0.25;
     ctx.beginPath();
-    ctx.moveTo(QP[o], QP[o + 1]);
-    ctx.lineTo(QP[o + 2], QP[o + 3]);
-    ctx.lineTo(QP[o + 4], QP[o + 5]);
-    ctx.lineTo(QP[o + 6], QP[o + 7]);
-    ctx.closePath();
+    for (let v = 0; v < 8; v += 2) {
+      const dx = QP[o + v] - cx;
+      const dy = QP[o + v + 1] - cy;
+      const f = grow / (Math.sqrt(dx * dx + dy * dy) || 1);
+      if (v === 0) ctx.moveTo(QP[o] + dx * f, QP[o + 1] + dy * f);
+      else ctx.lineTo(QP[o + v] + dx * f, QP[o + v + 1] + dy * f);
+    }
     ctx.fill();
-    ctx.stroke();
   }
 }
 

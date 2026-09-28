@@ -91,6 +91,16 @@ const stemPath = (p) => `M${p[0][0]},${p[0][1]} C${p[1][0]},${p[1][1]} ${p[2][0]
 
 const easeInOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
 
+// The bloom is played back from frames rendered in advance (see
+// roseWorker.js): this many per rose, bud to full, blended in between. All
+// but the last are rendered at LOW of the canvas size — they are only on
+// screen for a moment each, while the last one stays.
+const FRAMES = 14;
+const LOW = 0.6;
+// How long the stems, leaves and buds take to arrive. Nothing heavy runs
+// before this, so that animation has the phone to itself.
+const GROW_MS = 3600;
+
 export default function RosesGift() {
   // grow → bud (waits for a tap) → bloom → bloomed → note
   const reduced = useMemo(() => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches, []);
@@ -100,39 +110,82 @@ export default function RosesGift() {
   // Flipped a moment after mount, not on it: the stems need one painted frame
   // at zero length for their draw-in transition to have somewhere to start.
   const [grown, setGrown] = useState(reduced);
+  const [growDone, setGrowDone] = useState(reduced);
+  const [baked, setBaked] = useState(false);
+  const canvases = useRef([]);
+  const frames = useRef(ROSES.map(() => []));
+  const dirty = useRef(false);
 
   useEffect(() => {
-    if (phase !== "grow") return undefined;
+    if (reduced) return undefined;
     const a = setTimeout(() => setGrown(true), 250);
-    const b = setTimeout(() => setPhase("bud"), 3600);
+    const b = setTimeout(() => setGrowDone(true), GROW_MS);
     return () => {
       clearTimeout(a);
       clearTimeout(b);
     };
-  }, [phase]);
-
-  // Workers keep their own clocks, so they are told when the bloom started
-  // as an absolute time. Under reduced motion it "started" long ago.
-  useEffect(() => {
-    if (reduced && workerPool()) workerPool().forEach((w) => w.postMessage({ type: "bloom", at: -Infinity }));
   }, [reduced]);
+
+  // The tap is only offered once every frame of the bloom exists.
+  useEffect(() => {
+    if (phase === "grow" && growDone && baked) setPhase("bud");
+  }, [phase, growDone, baked]);
+
+  useEffect(() => {
+    const onFrame = (id, k, img) => {
+      frames.current[id][k]?.close?.();
+      frames.current[id][k] = img;
+      dirty.current = true;
+    };
+    const stop = bakeFrames({ canvases: canvases.current, onFrame, onDone: () => setBaked(true), delay: reduced ? 0 : GROW_MS });
+    return () => {
+      stop();
+      frames.current.forEach((fs) => fs.forEach((f) => f?.close?.()));
+      frames.current = ROSES.map(() => []);
+    };
+  }, [reduced]);
+
+  // Playback: each frame, every canvas shows the two baked frames either side
+  // of where its rose should be, blended. Two drawImage calls per rose.
+  useEffect(() => {
+    const shown = ROSES.map(() => -1);
+    const sizes = ROSES.map(() => 0);
+    const fit = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvases.current.forEach((c, i) => {
+        const px = Math.round(c.clientWidth * dpr);
+        if (px > 0 && px !== sizes[i]) {
+          c.width = c.height = sizes[i] = px;
+          shown[i] = -1;
+        }
+      });
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    canvases.current.forEach((c) => ro.observe(c));
+    let raf = 0;
+    const tick = (now) => {
+      const force = dirty.current;
+      dirty.current = false;
+      ROSES.forEach((r, i) => {
+        const pos = bloomPos(r, bloomStart.current, now);
+        if (!force && Math.abs(pos - shown[i]) < 0.002) return;
+        if (paint(canvases.current[i], frames.current[i], pos)) shown[i] = pos;
+      });
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, []);
 
   const startBloom = () => {
     if (phase !== "bud") return;
     bloomStart.current = performance.now();
-    if (workerPool()) {
-      const at = performance.timeOrigin + bloomStart.current;
-      workerPool().forEach((w) => w.postMessage({ type: "bloom", at }));
-    }
     setPhase("bloom");
     setTimeout(() => setPhase("bloomed"), BLOOM_MS + 300);
-  };
-
-  const openAt = (i, now) => {
-    if (bloomStart.current === null) return BUD_OPEN;
-    const r = ROSES[i];
-    const x = (now - bloomStart.current - r.delay) / r.dur;
-    return BUD_OPEN + (FULL_OPEN - BUD_OPEN) * easeInOut(Math.min(1, Math.max(0, x)));
   };
 
   const bloomed = phase === "bloomed";
@@ -154,7 +207,17 @@ export default function RosesGift() {
         <div className="rg-glow" style={{ opacity: grown ? 1 : 0 }} />
         <Stems grown={grown} instant={reduced} />
         {ROSES.map((r, i) => (
-          <Head key={r.seed} index={i} rose={r} shown={grown} instant={reduced} openAt={openAt} swaying={bloomed && !reduced} />
+          <Head
+            key={r.seed}
+            index={i}
+            rose={r}
+            shown={grown}
+            instant={reduced}
+            swaying={bloomed && !reduced}
+            canvasRef={(el) => {
+              if (el) canvases.current[i] = el;
+            }}
+          />
         ))}
       </div>
 
@@ -170,137 +233,153 @@ export default function RosesGift() {
   );
 }
 
+/** Where rose `r` is in its bloom at `now`, as a position among the frames. */
+function bloomPos(r, start, now) {
+  if (start === null) return 0;
+  const x = Math.min(1, Math.max(0, (now - start - r.delay) / r.dur));
+  return easeInOut(x) * (FRAMES - 1);
+}
+
+/** Shows `pos` on the canvas: frame ⌊pos⌋, with the next one blended over it. */
+function paint(canvas, fs, pos) {
+  if (!canvas || !canvas.width) return false;
+  const k = Math.min(FRAMES - 1, Math.floor(pos));
+  let a = fs[k];
+  let b = null;
+  let f = 0;
+  if (a) {
+    b = fs[k + 1] || null;
+    f = pos - k;
+  } else {
+    // Not rendered yet — hold the latest one that is.
+    for (let j = k - 1; j >= 0 && !a; j--) a = fs[j];
+    if (!a) return false;
+  }
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width;
+  ctx.clearRect(0, 0, w, w);
+  ctx.globalAlpha = 1;
+  ctx.drawImage(a, 0, 0, w, w);
+  if (b && f > 0.002) {
+    ctx.globalAlpha = f;
+    ctx.drawImage(b, 0, 0, w, w);
+    ctx.globalAlpha = 1;
+  }
+  return true;
+}
+
 /**
- * Rose drawing runs in a few workers, one OffscreenCanvas per flower, spread
- * round-robin — several flowers opening at once are drawn in parallel on
- * other cores, and nothing the page itself animates (stems, buds, a tap)
- * ever waits on them. `false` where OffscreenCanvas is missing; the flowers
- * are then drawn on this thread instead (see the fallback loop below).
+ * Renders every rose's frames: the buds straight away (they are cheap), the
+ * rest after `delay`. Uses a couple of workers where OffscreenCanvas exists,
+ * and otherwise — or if a worker fails — renders on this thread in small
+ * slices between frames. Returns a function that stops it.
  */
-let pool = null;
-function workerPool() {
-  if (pool !== null) return pool;
+function bakeFrames({ canvases, onFrame, onDone, delay }) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const spec = ROSES.map((r, i) => ({
+    id: i,
+    seed: r.seed,
+    view: r.view,
+    px: Math.max(32, Math.round((canvases[i]?.clientWidth || 140) * dpr)),
+  }));
+  // The first to open are rendered first.
+  const order = [...spec].sort((a, b) => ROSES[a.id].delay - ROSES[b.id].delay);
+  const bakeMsg = { type: "bake", frames: FRAMES, bud: BUD_OPEN, full: FULL_OPEN, low: LOW };
+  const timers = [];
+  let stopped = false;
+  let workers = null;
+  let stopLocal = null;
+
+  const local = (fromBuds) => {
+    const jobs = [];
+    if (fromBuds) spec.forEach((r) => jobs.push({ r, k: 0 }));
+    const rest = [];
+    order.forEach((r) => {
+      for (let k = 1; k < FRAMES; k++) rest.push({ r, k });
+    });
+    let i = 0;
+    const run = () => {
+      if (stopped) return;
+      const t0 = performance.now();
+      while (i < jobs.length && performance.now() - t0 < 8) {
+        const { r, k } = jobs[i++];
+        const last = k === FRAMES - 1;
+        const px = k === 0 || last ? r.px : Math.max(32, Math.round(r.px * LOW));
+        const c = document.createElement("canvas");
+        c.width = c.height = px;
+        const mesh = last ? "fine" : k === 0 ? "coarse" : "draft";
+        drawRose(c.getContext("2d"), localModel(r.seed), BUD_OPEN + ((FULL_OPEN - BUD_OPEN) * k) / (FRAMES - 1), px, r.view, mesh);
+        onFrame(r.id, k, c);
+      }
+      if (i < jobs.length) timers.push(setTimeout(run, 0));
+      else if (jobs.length === spec.length && fromBuds) {
+        // Buds done; the rest waits for the growing animation to finish.
+        jobs.push(...rest);
+        timers.push(setTimeout(run, delay));
+      } else onDone();
+    };
+    run();
+    stopLocal = () => {
+      stopped = true;
+    };
+  };
+
   const supported =
     typeof Worker !== "undefined" &&
     typeof OffscreenCanvas !== "undefined" &&
-    "transferControlToOffscreen" in HTMLCanvasElement.prototype;
-  if (!supported) return (pool = false);
-  const n = Math.max(2, Math.min(4, (navigator.hardwareConcurrency || 4) - 1));
-  try {
-    pool = Array.from({ length: n }, () => new Worker(new URL("./roseWorker.js", import.meta.url), { type: "module" }));
-  } catch {
-    pool = false;
-  }
-  return pool;
-}
-
-// A canvas can hand over its drawing only once; StrictMode's second mount
-// must not try again.
-const transferred = new WeakSet();
-
-/**
- * Fallback: every flower shares one loop on the main thread with a time
- * budget — the one that has waited longest redraws first, and the rest wait
- * a frame if the budget is spent.
- */
-const heads = new Set();
-let loopId = 0;
-const FRAME_BUDGET_MS = 12;
-
-function loop(now) {
-  const start = performance.now();
-  const queue = [...heads].sort((a, b) => a.drawnAt - b.drawnAt);
-  for (const h of queue) {
-    if (performance.now() - start > FRAME_BUDGET_MS) break;
-    h.tick(now);
-  }
-  loopId = heads.size ? requestAnimationFrame(loop) : 0;
-}
-
-function addHead(h) {
-  heads.add(h);
-  if (!loopId) loopId = requestAnimationFrame(loop);
-  return () => heads.delete(h);
-}
-
-const canvasPx = (el) => Math.round(el.clientWidth * Math.min(window.devicePixelRatio || 1, 2));
-
-/**
- * One flower head: a canvas repainted whenever its openness changes — with a
- * coarse mesh while it moves, and once with a fine one when it comes to rest.
- */
-function Head({ index, rose, shown, instant, openAt, swaying }) {
-  const wrapRef = useRef(null);
-  const canvasRef = useRef(null);
-  const model = useMemo(() => makeRose(rose.seed), [rose.seed]);
-  const openAtRef = useRef(openAt);
-  openAtRef.current = openAt;
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const workers = workerPool();
-
-    if (workers) {
-      const worker = workers[index % workers.length];
-      if (!transferred.has(canvas)) {
-        transferred.add(canvas);
-        const off = canvas.transferControlToOffscreen();
-        worker.postMessage(
-          { type: "add", id: index, canvas: off, seed: rose.seed, view: rose.view, delay: rose.delay, dur: rose.dur, bud: BUD_OPEN, full: FULL_OPEN },
-          [off],
-        );
-      }
-      const fit = () => worker.postMessage({ type: "size", id: index, px: canvasPx(wrapRef.current) });
-      fit();
-      const ro = new ResizeObserver(fit);
-      ro.observe(wrapRef.current);
-      return () => ro.disconnect();
+    typeof OffscreenCanvas.prototype.transferToImageBitmap === "function";
+  if (supported) {
+    try {
+      const n = (navigator.hardwareConcurrency || 2) >= 4 ? 2 : 1;
+      workers = Array.from({ length: n }, () => new Worker(new URL("./roseWorker.js", import.meta.url), { type: "module" }));
+    } catch {
+      workers = null;
     }
+  }
 
-    const ctx = canvas.getContext("2d");
-    let last = -1;
-    let fineDone = false;
-    let movedAt = 0;
-    const fit = () => {
-      const px = canvasPx(wrapRef.current);
-      if (px > 0 && px !== canvas.width) {
-        canvas.width = px;
-        canvas.height = px;
-        last = -1;
-      }
-    };
-    const head = {
-      drawnAt: 0,
-      tick(now) {
-        if (canvas.width === 0) return;
-        const open = openAtRef.current(index, now);
-        if (Math.abs(open - last) > 0.0004) {
-          drawRose(ctx, model, open, canvas.width, rose.view);
-          last = open;
-          fineDone = false;
-          movedAt = now;
-          head.drawnAt = now;
-        } else if (!fineDone && now - movedAt > 150) {
-          drawRose(ctx, model, open, canvas.width, rose.view, true);
-          fineDone = true;
-          head.drawnAt = now;
-        }
-      },
-    };
-    fit();
-    const ro = new ResizeObserver(fit);
-    ro.observe(wrapRef.current);
-    const remove = addHead(head);
-    return () => {
-      remove();
-      ro.disconnect();
-    };
-  }, [index, model, rose]);
+  if (!workers) {
+    local(true);
+  } else {
+    let pending = workers.length;
+    let failed = false;
+    const share = (list, wi) => list.filter((_, j) => j % workers.length === wi);
+    workers.forEach((w, wi) => {
+      w.onmessage = ({ data }) => {
+        if (data.done) {
+          if (--pending === 0) onDone();
+        } else onFrame(data.id, data.k, data.bitmap);
+      };
+      w.onerror = () => {
+        if (failed || stopped) return;
+        failed = true;
+        workers.forEach((x) => x.terminate());
+        timers.forEach(clearTimeout);
+        local(true);
+      };
+      w.postMessage({ type: "buds", roses: share(spec, wi), bud: BUD_OPEN });
+    });
+    timers.push(setTimeout(() => workers.forEach((w, wi) => w.postMessage({ ...bakeMsg, roses: share(order, wi) })), delay));
+  }
 
+  return () => {
+    stopped = true;
+    timers.forEach(clearTimeout);
+    workers?.forEach((w) => w.terminate());
+    stopLocal?.();
+  };
+}
+
+const localModels = new Map();
+function localModel(seed) {
+  if (!localModels.has(seed)) localModels.set(seed, makeRose(seed));
+  return localModels.get(seed);
+}
+
+/** One flower head: a canvas the playback loop above paints into. */
+function Head({ index, rose, shown, instant, swaying, canvasRef }) {
   const [tx, ty] = rose.stem[3];
   return (
     <div
-      ref={wrapRef}
       className="rg-head"
       style={{
         left: `${((tx - rose.size / 2) / VB.w) * 100}%`,
