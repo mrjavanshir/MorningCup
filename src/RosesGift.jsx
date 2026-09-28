@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { Pause, Play } from "lucide-react";
+import { Download, Pause, Play } from "lucide-react";
 import { drawRose, makeRose, STEM_TIP } from "./rose3d.js";
 
 // ── Mətn ────────────────────────────────────────────────────────────────────
@@ -15,7 +15,7 @@ const COPY = {
     "Sənə gül göndərə bilərdim, amma güllər bir neçə günə solur. Mən isə sənə solmayan bir şey vermək istədim. Sənin adına niyyət edib bir ehtiyacı olana yardım etdim. Qoy o savab sənə yazılsın, Allah ürəyindəki ağırlığı götürsün.",
     "Bu güllər isə solmayanlardır.",
   ],
-  song: { title: "Yellow Girl", src: "GoofyGirl.mp3" },
+  song: { title: "Goofy Girl", src: "GoofyGirl.mp3" },
   signature: "Cavanşir",
 };
 
@@ -917,7 +917,28 @@ function SongPlayer({ title, src }) {
         {playing ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" style={{ marginLeft: 2 }} />}
       </button>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 19, fontStyle: "italic", fontWeight: 600, color: C.ink, lineHeight: 1.2 }}>{title}</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <div style={{ fontSize: 19, fontStyle: "italic", fontWeight: 600, color: C.ink, lineHeight: 1.2 }}>{title}</div>
+          {/* Hers to keep: saves the song to her phone. */}
+          <a
+            href={src}
+            download={`${title}.mp3`}
+            aria-label="Mahnını yüklə"
+            style={{
+              width: 30,
+              height: 30,
+              flexShrink: 0,
+              borderRadius: 9999,
+              border: "1px solid rgba(90,60,50,0.28)",
+              color: "#8a1522",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Download size={15} />
+          </a>
+        </div>
         <div onClick={seek} style={{ padding: "8px 0 4px", cursor: duration ? "pointer" : "default" }}>
           <div style={{ height: 3, borderRadius: 3, background: "rgba(90,60,50,0.18)", overflow: "hidden" }}>
             <div style={{ height: "100%", width: `${progress * 100}%`, background: "#8a1522", transition: "width 0.25s linear" }} />
