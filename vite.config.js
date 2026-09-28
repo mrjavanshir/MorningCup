@@ -12,6 +12,8 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
+      // Registered from src/main.jsx instead, so the gift pages can skip it.
+      injectRegister: false,
       includeAssets: ["sun.svg", "apple-touch-icon.png"],
       manifest: {
         name: "Nook",
