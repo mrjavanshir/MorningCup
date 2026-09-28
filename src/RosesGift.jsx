@@ -13,7 +13,7 @@ const COPY = {
     "Qənirə,",
     "Bilirəm, bu günlərdə içində bir sıxıntı var.",
     "Sənə gül göndərə bilərdim, amma güllər bir neçə günə solur. Mən isə sənə solmayan bir şey vermək istədim. Sənin adına niyyət edib bir ehtiyacı olana yardım etdim. Qoy o savab sənə yazılsın, Allah ürəyindəki ağırlığı götürsün.",
-    "Bu güllər isə solmayanlardır.",
+    "Bir də… sənin üçün mahnı düzəltdim. Bəli, mahnı. Qulaq as, sonra gülə bilərsən. 😄",
   ],
   song: { title: "Goofy Girl", src: "GoofyGirl.mp3" },
   signature: "Cavanşir",
