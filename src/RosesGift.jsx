@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
+import { Pause, Play } from "lucide-react";
 import { drawRose, makeRose, STEM_TIP } from "./rose3d.js";
 
 // ── Mətn ────────────────────────────────────────────────────────────────────
-// Qeyddə görünən hər şey buradadır. `verse` boş qalsa, ayə bloku göstərilmir.
+// Qeyddə görünən hər şey buradadır. `song.src` public/ qovluğundakı fayldır.
 const COPY = {
   tapRose: "qızılgülə toxun",
   cover: "Qənirəyə",
@@ -14,10 +15,7 @@ const COPY = {
     "Sənə gül göndərə bilərdim, amma güllər bir neçə günə solur. Mən isə sənə solmayan bir şey vermək istədim. Sənin adına niyyət edib bir ehtiyacı olana yardım etdim. Qoy o savab sənə yazılsın, Allah ürəyindəki ağırlığı götürsün.",
     "Bu güllər isə solmayanlardır.",
   ],
-  verse: {
-    arabic: "فَإِنَّ مَعَ الْعُسْرِ يُسْرًا",
-    meaning: "Həqiqətən, çətinliklə yanaşı bir asanlıq da var. (İnşirah, 5)",
-  },
+  song: { title: "Yellow Girl", src: "GoofyGirl.mp3" },
   signature: "Cavanşir",
 };
 
@@ -189,6 +187,9 @@ export default function RosesGift() {
   };
 
   const bloomed = phase === "bloomed";
+  // The music can only start from a tap, so it starts with the tap that opens
+  // the roses (see startBloom). Under reduced motion there is no such tap, so
+  // the button is there from the start instead.
 
   return (
     <div
@@ -821,13 +822,10 @@ function Note({ open, onOpen, instant }) {
           {text}
         </motion.p>
       ))}
-      {COPY.verse && (
-        <motion.div {...ink(paragraphs.length)} style={{ textAlign: "center", margin: "22px 0 8px" }}>
-          <div style={{ width: 40, height: 1, background: "rgba(90,60,50,0.3)", margin: "0 auto 14px" }} />
-          <p dir="rtl" lang="ar" style={{ fontFamily: "'Amiri', serif", fontSize: 26, lineHeight: 1.6, color: "#6b1a24", margin: 0 }}>
-            {COPY.verse.arabic}
-          </p>
-          <p style={{ fontSize: 15.5, fontStyle: "italic", color: C.inkSoft, margin: "4px 0 0" }}>{COPY.verse.meaning}</p>
+      {COPY.song && (
+        <motion.div {...ink(paragraphs.length)} style={{ margin: "22px 0 8px" }}>
+          <div style={{ width: 40, height: 1, background: "rgba(90,60,50,0.3)", margin: "0 auto 16px" }} />
+          <SongPlayer title={COPY.song.title} src={`${import.meta.env.BASE_URL}${COPY.song.src}`} />
         </motion.div>
       )}
       <motion.p
@@ -837,6 +835,100 @@ function Note({ open, onOpen, instant }) {
         {COPY.signature}
       </motion.p>
     </motion.div>
+  );
+}
+
+/**
+ * The song, inside the note: play/pause, how far in, and how long. It only
+ * ever starts from her tap. It stops while the phone is locked or she is in
+ * another app, and carries on when she comes back if it was playing.
+ */
+function SongPlayer({ title, src }) {
+  const audioRef = useRef(null);
+  const [playing, setPlaying] = useState(false);
+  const [time, setTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  useEffect(() => {
+    let resume = false;
+    const onVisibility = () => {
+      const a = audioRef.current;
+      if (!a) return;
+      if (document.hidden) {
+        resume = !a.paused;
+        a.pause();
+      } else if (resume) {
+        resume = false;
+        a.play().catch(() => {});
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
+
+  const toggle = () => {
+    const a = audioRef.current;
+    if (!a) return;
+    if (a.paused) a.play().catch(() => {});
+    else a.pause();
+  };
+
+  // Tapping the bar jumps there.
+  const seek = (e) => {
+    const a = audioRef.current;
+    if (!a || !duration) return;
+    const box = e.currentTarget.getBoundingClientRect();
+    a.currentTime = Math.min(1, Math.max(0, (e.clientX - box.left) / box.width)) * duration;
+  };
+
+  const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+  const progress = duration ? time / duration : 0;
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+      <audio
+        ref={audioRef}
+        src={src}
+        preload="metadata"
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => setPlaying(false)}
+        onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
+        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || 0)}
+      />
+      <button
+        onClick={toggle}
+        aria-label={playing ? "Dayandır" : "Oxut"}
+        style={{
+          width: 46,
+          height: 46,
+          flexShrink: 0,
+          borderRadius: 9999,
+          border: "none",
+          background: "radial-gradient(circle at 38% 32%, #c23a47, #8a1522 60%, #5a0a14)",
+          color: "#F7EDE2",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: "0 3px 8px rgba(90,10,20,0.35)",
+          cursor: "pointer",
+        }}
+      >
+        {playing ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" style={{ marginLeft: 2 }} />}
+      </button>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 19, fontStyle: "italic", fontWeight: 600, color: C.ink, lineHeight: 1.2 }}>{title}</div>
+        <div onClick={seek} style={{ padding: "8px 0 4px", cursor: duration ? "pointer" : "default" }}>
+          <div style={{ height: 3, borderRadius: 3, background: "rgba(90,60,50,0.18)", overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${progress * 100}%`, background: "#8a1522", transition: "width 0.25s linear" }} />
+          </div>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: C.inkSoft, fontStyle: "italic" }}>
+          <span>{mmss(time)}</span>
+          <span>{duration ? mmss(duration) : ""}</span>
+        </div>
+      </div>
+    </div>
   );
 }
 
