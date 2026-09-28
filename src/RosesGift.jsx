@@ -111,9 +111,19 @@ export default function RosesGift() {
     };
   }, [phase]);
 
+  // Workers keep their own clocks, so they are told when the bloom started
+  // as an absolute time. Under reduced motion it "started" long ago.
+  useEffect(() => {
+    if (reduced && workerPool()) workerPool().forEach((w) => w.postMessage({ type: "bloom", at: -Infinity }));
+  }, [reduced]);
+
   const startBloom = () => {
     if (phase !== "bud") return;
     bloomStart.current = performance.now();
+    if (workerPool()) {
+      const at = performance.timeOrigin + bloomStart.current;
+      workerPool().forEach((w) => w.postMessage({ type: "bloom", at }));
+    }
     setPhase("bloom");
     setTimeout(() => setPhase("bloomed"), BLOOM_MS + 300);
   };
@@ -161,9 +171,37 @@ export default function RosesGift() {
 }
 
 /**
- * All three flowers share one animation loop with a time budget, so frames
- * where two of them are opening at once stay smooth: the one that has waited
- * longest redraws first, and the rest wait a frame if the budget is spent.
+ * Rose drawing runs in a few workers, one OffscreenCanvas per flower, spread
+ * round-robin — several flowers opening at once are drawn in parallel on
+ * other cores, and nothing the page itself animates (stems, buds, a tap)
+ * ever waits on them. `false` where OffscreenCanvas is missing; the flowers
+ * are then drawn on this thread instead (see the fallback loop below).
+ */
+let pool = null;
+function workerPool() {
+  if (pool !== null) return pool;
+  const supported =
+    typeof Worker !== "undefined" &&
+    typeof OffscreenCanvas !== "undefined" &&
+    "transferControlToOffscreen" in HTMLCanvasElement.prototype;
+  if (!supported) return (pool = false);
+  const n = Math.max(2, Math.min(4, (navigator.hardwareConcurrency || 4) - 1));
+  try {
+    pool = Array.from({ length: n }, () => new Worker(new URL("./roseWorker.js", import.meta.url), { type: "module" }));
+  } catch {
+    pool = false;
+  }
+  return pool;
+}
+
+// A canvas can hand over its drawing only once; StrictMode's second mount
+// must not try again.
+const transferred = new WeakSet();
+
+/**
+ * Fallback: every flower shares one loop on the main thread with a time
+ * budget — the one that has waited longest redraws first, and the rest wait
+ * a frame if the budget is spent.
  */
 const heads = new Set();
 let loopId = 0;
@@ -185,6 +223,8 @@ function addHead(h) {
   return () => heads.delete(h);
 }
 
+const canvasPx = (el) => Math.round(el.clientWidth * Math.min(window.devicePixelRatio || 1, 2));
+
 /**
  * One flower head: a canvas repainted whenever its openness changes — with a
  * coarse mesh while it moves, and once with a fine one when it comes to rest.
@@ -198,13 +238,31 @@ function Head({ index, rose, shown, instant, openAt, swaying }) {
 
   useEffect(() => {
     const canvas = canvasRef.current;
+    const workers = workerPool();
+
+    if (workers) {
+      const worker = workers[index % workers.length];
+      if (!transferred.has(canvas)) {
+        transferred.add(canvas);
+        const off = canvas.transferControlToOffscreen();
+        worker.postMessage(
+          { type: "add", id: index, canvas: off, seed: rose.seed, view: rose.view, delay: rose.delay, dur: rose.dur, bud: BUD_OPEN, full: FULL_OPEN },
+          [off],
+        );
+      }
+      const fit = () => worker.postMessage({ type: "size", id: index, px: canvasPx(wrapRef.current) });
+      fit();
+      const ro = new ResizeObserver(fit);
+      ro.observe(wrapRef.current);
+      return () => ro.disconnect();
+    }
+
     const ctx = canvas.getContext("2d");
     let last = -1;
     let fineDone = false;
     let movedAt = 0;
     const fit = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
-      const px = Math.round(wrapRef.current.clientWidth * dpr);
+      const px = canvasPx(wrapRef.current);
       if (px > 0 && px !== canvas.width) {
         canvas.width = px;
         canvas.height = px;
@@ -237,7 +295,7 @@ function Head({ index, rose, shown, instant, openAt, swaying }) {
       remove();
       ro.disconnect();
     };
-  }, [index, model, rose.view]);
+  }, [index, model, rose]);
 
   const [tx, ty] = rose.stem[3];
   return (
@@ -758,7 +816,7 @@ function Styles() {
         margin-bottom: calc(min(100vw - 24px, 420px) * ${VB.h / VB.w} * -0.45);
       }
       .rg-stems { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-      .rg-head { position: absolute; aspect-ratio: 1; filter: drop-shadow(0 10px 14px rgba(0,0,0,0.45)); }
+      .rg-head { position: absolute; aspect-ratio: 1; }
       .rg-glow {
         position: absolute; left: 10%; right: 10%; top: 8%; height: 52%;
         background: radial-gradient(ellipse at 50% 50%, rgba(214,90,90,0.16), rgba(214,90,90,0) 70%);
