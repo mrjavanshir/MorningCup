@@ -198,6 +198,9 @@ function SignedInApp() {
   // nothing above it. Returned before the app chrome rather than inside it: a
   // greeting and a theme toggle framing a gift would undo it.
   if (route.view === "app" && route.id === "birthday") return <BirthdayGiftCard admin={asAdmin} />;
+  // Reached here only by tapping it in the hub, which changes the view but
+  // not the address; opened by its link, it never gets this far (see App).
+  if (route.view === "app" && route.id === "roses") return <RosesGift />;
 
   const activeApp = route.view === "app" ? APPS.find((g) => g.id === route.id) : null;
   const isNight = !!activeApp?.night;
